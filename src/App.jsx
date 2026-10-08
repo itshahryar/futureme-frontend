@@ -6,6 +6,7 @@ import Register from '@/pages/Register'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardHome from '@/pages/DashboardHome'
 import DashboardSettings from '@/pages/DashboardSettings'
+import DashboardUsers from '@/pages/DashboardUsers'
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useSelector(selectIsAuthenticated)
@@ -63,6 +64,7 @@ export default function App() {
           }
         >
           <Route index element={<DashboardHome />} />
+          <Route path="users" element={<DashboardUsers />} />
           <Route path="settings" element={<DashboardSettings />} />
         </Route>
 

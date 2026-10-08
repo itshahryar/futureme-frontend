@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import {
   GraduationCap,
   Home,
+  Users,
   Settings,
   LogOut,
   Menu,
@@ -78,6 +79,16 @@ export default function DashboardLayout() {
       icon: Home,
       end: true,
     },
+    ...(user?.role === 'ADMIN'
+      ? [
+          {
+            name: 'Users',
+            to: '/dashboard/users',
+            icon: Users,
+            end: false,
+          },
+        ]
+      : []),
     {
       name: 'Settings',
       to: '/dashboard/settings',
@@ -102,7 +113,11 @@ export default function DashboardLayout() {
   }
 
   // Get current section name for header breadcrumb
-  const currentSection = location.pathname.includes('/settings') ? 'Settings' : 'Home'
+  const currentSection = location.pathname.includes('/settings')
+    ? 'Settings'
+    : location.pathname.includes('/users')
+    ? 'Users'
+    : 'Home'
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'User'
 
   return (
