@@ -12,12 +12,18 @@ const badgeVariants = cva(
         secondary:
           "border-transparent bg-slate-100 text-slate-900 hover:bg-slate-200",
         destructive:
-          "border-transparent bg-red-500 text-white shadow hover:bg-red-600",
-        outline: "text-slate-950 border-slate-200",
+          "border-red-200 bg-red-50 text-[#DC2626] font-medium",
+        outline: "text-[#111827] border-[#E5E7EB]",
         student:
-          "border-blue-200 bg-blue-50 text-blue-700 font-medium",
+          "border-indigo-200 bg-[#EEF2FF] text-[#4F46E5] font-medium",
         admin:
           "border-purple-200 bg-purple-50 text-purple-700 font-medium",
+        success:
+          "border-green-200 bg-green-50 text-[#16A34A] font-medium",
+        warning:
+          "border-amber-200 bg-amber-50 text-[#D97706] font-medium",
+        neutral:
+          "border-[#E5E7EB] bg-gray-50 text-[#6B7280] font-medium",
       },
     },
     defaultVariants: {

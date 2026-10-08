@@ -3,7 +3,9 @@ import { useSelector } from 'react-redux'
 import { selectIsAuthenticated } from '@/store/slices/authSlice'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
-import Dashboard from '@/pages/Dashboard'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import DashboardHome from '@/pages/DashboardHome'
+import DashboardSettings from '@/pages/DashboardSettings'
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useSelector(selectIsAuthenticated)
@@ -25,6 +27,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route
           path="/login"
           element={
@@ -49,15 +52,22 @@ export default function App() {
             </PublicRoute>
           }
         />
+
+        {/* Protected Dashboard with Sidebar Layout */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardLayout />
             </ProtectedRoute>
           }
-        />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        >
+          <Route index element={<DashboardHome />} />
+          <Route path="settings" element={<DashboardSettings />} />
+        </Route>
+
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   )

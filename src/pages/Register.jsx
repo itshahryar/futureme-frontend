@@ -34,7 +34,8 @@ export default function Register() {
 
   const [register, { isLoading }] = useRegisterMutation()
 
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -46,8 +47,8 @@ export default function Register() {
     e.preventDefault()
     setError('')
 
-    if (!name.trim() || !email.trim() || !password) {
-      setError('Please fill in all required fields.')
+    if (!firstName.trim() || !email.trim() || !password) {
+      setError('Please fill in first name, email, and password.')
       return
     }
 
@@ -64,7 +65,8 @@ export default function Register() {
     try {
       // RTK Query mutation sends payload; backend saves to Neon PostgreSQL & sets HTTP-only cookie
       const res = await register({
-        name: name.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         email: email.trim(),
         password,
         role,
@@ -89,24 +91,24 @@ export default function Register() {
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-900 text-white shadow-md">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#4F46E5] text-white shadow-md shadow-indigo-100">
             <GraduationCap className="w-7 h-7" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
             Create an Account
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#6B7280]">
             Stored in Neon PostgreSQL with RTK Query and HTTP-only cookies
           </p>
         </div>
 
         {/* Register Card */}
-        <Card className="border-slate-200 shadow-xl bg-white/95 backdrop-blur-sm">
+        <Card className="border-[#E5E7EB] shadow-xl bg-white/95 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-semibold text-slate-900">
+            <CardTitle className="text-xl font-semibold text-[#111827]">
               Sign Up
             </CardTitle>
-            <CardDescription className="text-slate-500 text-xs">
+            <CardDescription className="text-[#6B7280] text-xs">
               Fill in your details below to set up your account
             </CardDescription>
           </CardHeader>
@@ -133,17 +135,17 @@ export default function Register() {
                     onClick={() => setRole('STUDENT')}
                     className={`flex flex-col items-start p-3.5 rounded-lg border text-left transition-all cursor-pointer ${
                       role === 'STUDENT'
-                        ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-600/20'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                        ? 'border-[#4F46E5] bg-[#EEF2FF] ring-2 ring-[#4F46E5]/20'
+                        : 'border-[#E5E7EB] hover:border-slate-300 bg-white'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-[#4F46E5]">
                         <BookOpen className="w-4 h-4" />
                         STUDENT
                       </span>
                       {role === 'STUDENT' && (
-                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                        <CheckCircle2 className="w-4 h-4 text-[#4F46E5]" />
                       )}
                     </div>
                     <span className="text-[11px] text-slate-500 leading-snug">
@@ -178,20 +180,34 @@ export default function Register() {
                 </div>
               </div>
 
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Full Name</Label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              {/* First Name & Last Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="Jane"
+                      className="pl-9"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      autoComplete="given-name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName">Last Name</Label>
                   <Input
-                    id="name"
+                    id="lastName"
                     type="text"
-                    placeholder="Jane Doe"
-                    className="pl-9"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                    required
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    autoComplete="family-name"
                   />
                 </div>
               </div>
@@ -263,7 +279,7 @@ export default function Register() {
             <CardFooter className="flex flex-col space-y-4 pt-2">
               <Button
                 type="submit"
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium shadow-md transition-all h-10"
+                className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium shadow-xs transition-all h-9 text-xs sm:text-sm cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading ? 'Creating account...' : `Sign Up as ${role}`}

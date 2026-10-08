@@ -29,6 +29,14 @@ export const authApiSlice = apiSlice.injectEndpoints({
       query: () => '/auth/me',
       providesTags: ['User'],
     }),
+    updateProfile: builder.mutation({
+      query: (data) => ({
+        url: '/auth/profile',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
   }),
 })
 
@@ -37,4 +45,5 @@ export const {
   useLoginMutation,
   useLogoutMutation,
   useGetMeQuery,
+  useUpdateProfileMutation,
 } = authApiSlice

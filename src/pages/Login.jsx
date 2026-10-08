@@ -87,7 +87,7 @@ export default function Login() {
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-900 text-white shadow-md">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#4F46E5] text-white shadow-md shadow-indigo-100">
             <GraduationCap className="w-7 h-7" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
@@ -196,7 +196,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => fillQuickCredentials('STUDENT')}
-                    className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md bg-[#EEF2FF] text-[#4F46E5] hover:bg-indigo-100 border border-indigo-100 transition-colors cursor-pointer"
                   >
                     <UserCheck className="w-3.5 h-3.5" />
                     <span>Neon Student</span>
@@ -217,7 +217,7 @@ export default function Login() {
             <CardFooter className="flex flex-col space-y-4 pt-2">
               <Button
                 type="submit"
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium shadow-md transition-all h-10"
+                className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium shadow-xs transition-all h-9 text-xs sm:text-sm cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading ? 'Authenticating...' : 'Sign In'}
