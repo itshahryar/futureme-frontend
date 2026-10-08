@@ -201,7 +201,7 @@ export default function DashboardUsers() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       
       {/* Page Header */}
       <div>
@@ -209,14 +209,14 @@ export default function DashboardUsers() {
           <Users className="w-5 h-5 text-[#4F46E5]" />
           Users Management
         </h1>
-        <p className="page-subtitle mt-0.5">
+        <p className="page-subtitle mt-1">
           Review registered platform accounts and manage student profiles.
         </p>
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3.5 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <div className="p-4 sm:p-5 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium text-[#6B7280]">Total Users</p>
             <p className="text-xl font-bold text-[#111827] mt-0.5">{counts.total}</p>
@@ -226,7 +226,7 @@ export default function DashboardUsers() {
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
+        <div className="p-4 sm:p-5 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium text-[#6B7280]">Students</p>
             <p className="text-xl font-bold text-[#111827] mt-0.5">{counts.students}</p>
@@ -236,7 +236,7 @@ export default function DashboardUsers() {
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
+        <div className="p-4 sm:p-5 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium text-[#6B7280]">Administrators</p>
             <p className="text-xl font-bold text-[#111827] mt-0.5">{counts.admins}</p>
@@ -248,7 +248,7 @@ export default function DashboardUsers() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-3 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-[#E5E7EB] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3.5">
         
         {/* Search Input */}
         <div className="relative w-full sm:w-72">
@@ -383,7 +383,7 @@ export default function DashboardUsers() {
 
         {/* Pagination Footer */}
         {!isLoading && !isError && pagination.total > 0 && (
-          <div className="px-4 py-3 border-t border-[#E5E7EB] bg-[#F8FAFC] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-t border-[#E5E7EB] bg-[#F8FAFC] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div className="text-[#6B7280]">
               Showing <span className="font-semibold text-[#111827]">{(page - 1) * PAGE_SIZE + 1}</span> to{' '}
               <span className="font-semibold text-[#111827]">

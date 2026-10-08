@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { User, CheckCircle2, AlertCircle, Lock, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { User, CheckCircle2, AlertCircle, Lock, KeyRound, Eye, EyeOff, Settings } from 'lucide-react'
 
 export default function DashboardSettings() {
   const dispatch = useDispatch()
@@ -123,21 +123,22 @@ export default function DashboardSettings() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       
-      {/* Settings Header (Consistent standards) */}
-      <div className="space-y-0.5">
-        <h1 className="page-title">
+      {/* Page Header */}
+      <div>
+        <h1 className="page-title flex items-center gap-2">
+          <Settings className="w-5 h-5 text-[#4F46E5]" />
           Account Settings
         </h1>
-        <p className="page-subtitle">
-          Manage your account profile details.
+        <p className="page-subtitle mt-1">
+          Manage your personal details and account security.
         </p>
       </div>
 
-      {/* Profile Overview Card (Compact sizing) */}
-      <Card className="border-[#E5E7EB] shadow-xs bg-white">
-        <CardHeader className="p-3.5 sm:p-4 pb-2.5 border-b border-[#E5E7EB]">
+      {/* Profile Overview Card */}
+      <Card className="rounded-xl border-[#E5E7EB] shadow-xs bg-white">
+        <CardHeader className="p-4 sm:p-5 border-b border-[#E5E7EB]">
           <div>
             <CardTitle className="section-title flex items-center gap-2">
               <User className="w-4 h-4 text-[#111827]" />
@@ -150,7 +151,7 @@ export default function DashboardSettings() {
         </CardHeader>
         
         <form onSubmit={handleSave}>
-          <CardContent className="p-3.5 sm:p-4 space-y-4">
+          <CardContent className="p-4 sm:p-5 space-y-4">
             
             {/* Feedback Alert */}
             {feedback.text && (
@@ -259,8 +260,8 @@ export default function DashboardSettings() {
       </Card>
 
       {/* Change Password Card */}
-      <Card className="border-[#E5E7EB] shadow-xs bg-white">
-        <CardHeader className="p-3.5 sm:p-4 pb-2.5 border-b border-[#E5E7EB]">
+      <Card className="rounded-xl border-[#E5E7EB] shadow-xs bg-white">
+        <CardHeader className="p-4 sm:p-5 border-b border-[#E5E7EB]">
           <div>
             <CardTitle className="section-title flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-[#111827]" />
@@ -273,7 +274,7 @@ export default function DashboardSettings() {
         </CardHeader>
         
         <form onSubmit={handlePasswordSubmit}>
-          <CardContent className="p-3.5 sm:p-4 space-y-4">
+          <CardContent className="p-4 sm:p-5 space-y-4">
             
             {/* Feedback Alert */}
             {passwordFeedback.text && (

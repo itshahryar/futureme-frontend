@@ -339,7 +339,7 @@ export default function DashboardLayout() {
         </header>
 
         {/* Content Outlet */}
-        <main className="flex-1 p-4 sm:p-5 lg:p-6 max-w-5xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
           <Outlet />
         </main>
 
