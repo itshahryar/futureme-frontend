@@ -9,7 +9,6 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -93,19 +92,14 @@ export default function DashboardSettings() {
       {/* Profile Overview Card (Compact sizing) */}
       <Card className="border-[#E5E7EB] shadow-xs bg-white">
         <CardHeader className="p-3.5 sm:p-4 pb-2.5 border-b border-[#E5E7EB]">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="section-title flex items-center gap-2">
-                <User className="w-4 h-4 text-[#111827]" />
-                Profile Information
-              </CardTitle>
-              <CardDescription className="section-desc mt-0.5">
-                Update your personal details. Email and role are protected.
-              </CardDescription>
-            </div>
-            <Badge variant={user?.role === 'ADMIN' ? 'admin' : 'student'} className="text-[10px] px-2 py-0">
-              {user?.role}
-            </Badge>
+          <div>
+            <CardTitle className="section-title flex items-center gap-2">
+              <User className="w-4 h-4 text-[#111827]" />
+              Profile Information
+            </CardTitle>
+            <CardDescription className="section-desc mt-0.5">
+              Update your personal details.
+            </CardDescription>
           </div>
         </CardHeader>
         
@@ -202,17 +196,13 @@ export default function DashboardSettings() {
 
             </div>
 
-            {/* Bottom Actions & Account ID */}
-            <div className="pt-2 border-t border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="caption-text">
-                Account ID: <span className="font-mono text-[#6B7280] font-medium">{user?.id}</span>
-              </div>
-
+            {/* Bottom Actions */}
+            <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-end">
               <Button
                 type="submit"
                 size="sm"
                 disabled={isUpdating}
-                className="h-8 text-xs px-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium cursor-pointer shrink-0 self-end sm:self-auto transition-colors"
+                className="h-8 text-xs px-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium cursor-pointer shrink-0 transition-colors"
               >
                 {isUpdating ? 'Saving...' : 'Save Changes'}
               </Button>
