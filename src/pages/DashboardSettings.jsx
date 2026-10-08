@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectCurrentUser, setCredentials } from '@/store/slices/authSlice'
-import { useUpdateProfileMutation } from '@/store/api/authApiSlice'
+import { useUpdateProfileMutation, useChangePasswordMutation } from '@/store/api/authApiSlice'
 import {
   Card,
   CardHeader,
@@ -12,12 +12,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { User, CheckCircle2, AlertCircle, Lock } from 'lucide-react'
+import { User, CheckCircle2, AlertCircle, Lock, KeyRound, Eye, EyeOff } from 'lucide-react'
 
 export default function DashboardSettings() {
   const dispatch = useDispatch()
   const user = useSelector(selectCurrentUser)
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation()
+  const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation()
 
   // Parse full name into first and last name
   const parseNames = (fullName = '') => {
@@ -30,6 +31,15 @@ export default function DashboardSettings() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [feedback, setFeedback] = useState({ type: '', text: '' })
+
+  // Change password states
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordFeedback, setPasswordFeedback] = useState({ type: '', text: '' })
 
   // Synchronize local form state with user data
   useEffect(() => {
@@ -72,6 +82,42 @@ export default function DashboardSettings() {
       setFeedback({
         type: 'error',
         text: err?.data?.error || 'Failed to update profile. Please try again.',
+      })
+    }
+  }
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault()
+    setPasswordFeedback({ type: '', text: '' })
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordFeedback({ type: 'error', text: 'Please fill in all password fields.' })
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordFeedback({ type: 'error', text: 'New password must be at least 6 characters.' })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordFeedback({ type: 'error', text: 'New passwords do not match.' })
+      return
+    }
+
+    try {
+      const res = await changePassword({ currentPassword, newPassword }).unwrap()
+      setPasswordFeedback({ type: 'success', text: res?.message || 'Password changed successfully!' })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        setPasswordFeedback((prev) => (prev.type === 'success' ? { type: '', text: '' } : prev))
+      }, 3500)
+    } catch (err) {
+      setPasswordFeedback({
+        type: 'error',
+        text: err?.data?.error || 'Failed to change password. Please check your current password.',
       })
     }
   }
@@ -205,6 +251,141 @@ export default function DashboardSettings() {
                 className="h-8 text-xs px-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium cursor-pointer shrink-0 transition-colors"
               >
                 {isUpdating ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+
+          </CardContent>
+        </form>
+      </Card>
+
+      {/* Change Password Card */}
+      <Card className="border-[#E5E7EB] shadow-xs bg-white">
+        <CardHeader className="p-3.5 sm:p-4 pb-2.5 border-b border-[#E5E7EB]">
+          <div>
+            <CardTitle className="section-title flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-[#111827]" />
+              Change Password
+            </CardTitle>
+            <CardDescription className="section-desc mt-0.5">
+              Update your password to keep your account secure.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        
+        <form onSubmit={handlePasswordSubmit}>
+          <CardContent className="p-3.5 sm:p-4 space-y-4">
+            
+            {/* Feedback Alert */}
+            {passwordFeedback.text && (
+              <div
+                className={`flex items-center gap-2 p-2.5 rounded-lg text-xs border ${
+                  passwordFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
+                }`}
+              >
+                {passwordFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                )}
+                <span>{passwordFeedback.text}</span>
+              </div>
+            )}
+
+            {/* Password Fields Grid */}
+            <div className="space-y-3.5">
+              
+              {/* Current Password */}
+              <div className="space-y-1">
+                <Label htmlFor="currentPassword" className="field-label">
+                  Current Password <span className="text-[#DC2626]">*</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] pr-8"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-2.5 top-2 text-[#6B7280] hover:text-[#111827] cursor-pointer"
+                    aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password & Confirm New Password Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <Label htmlFor="newPassword" className="field-label">
+                    New Password <span className="text-[#DC2626]">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] pr-8"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2.5 top-2 text-[#6B7280] hover:text-[#111827] cursor-pointer"
+                      aria-label={showNewPassword ? "Hide password" : "Show password"}
+                    >
+                      {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="confirmPassword" className="field-label">
+                    Confirm New Password <span className="text-[#DC2626]">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat new password"
+                      className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] pr-8"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-2.5 top-2 text-[#6B7280] hover:text-[#111827] cursor-pointer"
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-end">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isChangingPassword}
+                className="h-8 text-xs px-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium cursor-pointer shrink-0 transition-colors"
+              >
+                {isChangingPassword ? 'Updating...' : 'Update Password'}
               </Button>
             </div>
 
