@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Bell,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Sliders,
+  User
 } from 'lucide-react'
 
 export default function DashboardLayout() {
@@ -79,12 +81,28 @@ export default function DashboardLayout() {
       icon: Home,
       end: true,
     },
+    ...(user?.role === 'STUDENT'
+      ? [
+          {
+            name: 'My Profile',
+            to: '/dashboard/profile',
+            icon: GraduationCap,
+            end: false,
+          },
+        ]
+      : []),
     ...(user?.role === 'ADMIN'
       ? [
           {
             name: 'Users',
             to: '/dashboard/users',
             icon: Users,
+            end: false,
+          },
+          {
+            name: 'Onboarding Controller',
+            to: '/dashboard/admin/onboarding',
+            icon: Sliders,
             end: false,
           },
         ]
