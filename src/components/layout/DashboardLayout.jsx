@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectCurrentUser, logoutUser, setCredentials } from '@/store/slices/authSlice'
 import { useLogoutMutation, useGetMeQuery } from '@/store/api/authApiSlice'
+import { useGetStudentProfileQuery } from '@/store/api/onboardingApiSlice'
 import { Button } from '@/components/ui/button'
 import {
   GraduationCap,
@@ -46,6 +47,21 @@ export default function DashboardLayout() {
   }, [meData, dispatch])
 
   const user = meData?.user || currentUser
+
+  // Prevent student from accessing the dashboard until onboarding is completed
+  const isStudent = user?.role === 'STUDENT'
+  const { data: profileData, isLoading: loadingProfile } = useGetStudentProfileQuery(undefined, {
+    skip: !isStudent,
+  })
+
+  useEffect(() => {
+    if (isStudent && !loadingProfile) {
+      const isOnboarded = profileData?.profile ? profileData.profile.isOnboarded : user?.isOnboarded
+      if (isOnboarded === false) {
+        navigate('/onboarding', { replace: true })
+      }
+    }
+  }, [isStudent, loadingProfile, profileData, user?.isOnboarded, navigate])
 
   // Close mobile drawer on route navigation
   useEffect(() => {
@@ -137,6 +153,17 @@ export default function DashboardLayout() {
     ? 'Users'
     : 'Home'
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'User'
+
+  if (isStudent && (loadingProfile || (profileData?.profile && !profileData.profile.isOnboarded) || (user && user.isOnboarded === false && !profileData?.profile?.isOnboarded))) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#4F46E5] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Checking onboarding status...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">

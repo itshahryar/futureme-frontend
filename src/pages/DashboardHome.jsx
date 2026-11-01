@@ -56,15 +56,6 @@ export default function DashboardHome() {
             <p className="text-xs text-indigo-100 leading-relaxed">
               Tell us about your university, degree, skills, and career goals so FutureMe can build your personalized profile.
             </p>
-            <div className="pt-2 flex items-center gap-3">
-              <div className="w-44 h-2 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-400 transition-all duration-300"
-                  style={{ width: `${Math.max(15, completionPercentage)}%` }}
-                />
-              </div>
-              <span className="text-xs font-semibold">{completionPercentage}% Completed</span>
-            </div>
           </div>
 
           <Button

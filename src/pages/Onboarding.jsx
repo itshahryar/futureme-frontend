@@ -27,6 +27,11 @@ import {
   Trophy,
   ArrowRight,
   AlertCircle,
+  Building2,
+  Laptop,
+  Globe,
+  Calendar,
+  Award,
 } from 'lucide-react'
 
 const MONTHS = [
@@ -110,6 +115,8 @@ export default function Onboarding() {
     shortTermGoal: '',
     longTermGoal: '',
   })
+  const [customAreaInput, setCustomAreaInput] = useState('')
+  const [customCareerInput, setCustomCareerInput] = useState('')
 
   // Populate initial state from user and saved profile
   useEffect(() => {
@@ -203,6 +210,10 @@ export default function Onboarding() {
         return GraduationCap
       case 'skills':
         return Sparkles
+      case 'experience':
+        return Briefcase
+      case 'projects':
+        return BookOpen
       case 'projects_experience':
         return Briefcase
       case 'interests_goals':
@@ -241,23 +252,198 @@ export default function Onboarding() {
         return false
       }
     } else if (currentSection.key === 'skills') {
-      const minRequired = fields.minSkillsRequired || 1
+      const minRequired = fields.minSkillsRequired !== undefined ? Math.min(fields.minSkillsRequired, 1) : 1
       if (selectedSkills.length < minRequired) {
-        setValidationError(`Please select or add at least ${minRequired} skill(s)`)
+        setValidationError(`Please select or add at least 1 skill`)
+        return false
+      }
+    } else if (currentSection.key === 'experience') {
+      const expReq = fields.experienceRequired === true || fields.experienceRequired?.required === true
+      if (expReq && experiences.length === 0) {
+        setValidationError('Please add at least one internship or work experience')
+        return false
+      }
+    } else if (currentSection.key === 'projects' || currentSection.key === 'projects_experience') {
+      const projReq = fields.projectsRequired === true || fields.projectsRequired?.required === true
+      if (projReq && projects.length === 0) {
+        setValidationError('Please add at least one project')
         return false
       }
     } else if (currentSection.key === 'interests_goals') {
-      if (fields.workPreferencesRequired && interests.workPreferences.length === 0) {
+      if (interests.workPreferences.length === 0) {
         setValidationError('Please select at least one work preference (Remote, Onsite, or Hybrid)')
         return false
       }
-      if (fields.areasOfInterestRequired && interests.areasOfInterest.length === 0) {
+      if (interests.areasOfInterest.length === 0) {
         setValidationError('Please select at least one area of interest')
+        return false
+      }
+      if (interests.areasOfInterest.length > 3) {
+        setValidationError('You can select at most 3 areas of interest')
+        return false
+      }
+      if (interests.careerInterests.length === 0) {
+        setValidationError('Please select at least one target career path')
+        return false
+      }
+      if (interests.careerInterests.length > 3) {
+        setValidationError('You can select at most 3 target career paths')
+        return false
+      }
+      if (!interests.shortTermGoal?.trim()) {
+        setValidationError('Short-term career goal is required')
+        return false
+      }
+      if (!interests.longTermGoal?.trim()) {
+        setValidationError('Long-term career vision is required')
         return false
       }
     }
 
     return true
+  }
+
+  // --- INTERESTS & PREFERENCES HELPERS (Primary & Secondary, Max 3) ---
+  const allSuggestedAreas = [
+    ...(configData?.areasOfInterest || []),
+    'Web Technologies',
+    'Artificial Intelligence & ML',
+    'Data Science & Analytics',
+    'Cloud Computing & DevOps',
+    'Mobile App Development',
+    'Cybersecurity & Networking',
+    'UI/UX Design & Product',
+    'Database Systems',
+  ].filter((v, i, a) => a.indexOf(v) === i)
+
+  const allSuggestedCareers = [
+    ...(configData?.careerInterests || []),
+    'Frontend Developer',
+    'Full Stack Developer',
+    'Backend Engineer',
+    'DevOps Engineer',
+    'Data Scientist',
+    'Mobile App Developer',
+    'AI / ML Engineer',
+    'UI/UX Designer',
+  ].filter((v, i, a) => a.indexOf(v) === i)
+
+  const handleToggleWorkPref = (wp) => {
+    const current = interests.workPreferences || []
+    if (current.includes(wp)) {
+      setInterests({ ...interests, workPreferences: current.filter((p) => p !== wp) })
+    } else {
+      setInterests({ ...interests, workPreferences: [...current, wp] })
+    }
+  }
+
+  const handleSetPrimaryWorkPref = (wp) => {
+    const current = interests.workPreferences || []
+    if (!current.includes(wp)) return
+    setInterests({
+      ...interests,
+      workPreferences: [wp, ...current.filter((p) => p !== wp)],
+    })
+  }
+
+  const handleToggleArea = (area) => {
+    const current = interests.areasOfInterest || []
+    if (current.includes(area)) {
+      setInterests({
+        ...interests,
+        areasOfInterest: current.filter((a) => a !== area),
+      })
+    } else {
+      if (current.length >= 3) {
+        setValidationError('You can select at most 3 areas of interest')
+        return
+      }
+      setValidationError('')
+      setInterests({
+        ...interests,
+        areasOfInterest: [...current, area],
+      })
+    }
+  }
+
+  const handleSetPrimaryArea = (area) => {
+    const current = interests.areasOfInterest || []
+    if (!current.includes(area)) return
+    setInterests({
+      ...interests,
+      areasOfInterest: [area, ...current.filter((a) => a !== area)],
+    })
+  }
+
+  const handleAddCustomArea = (e) => {
+    e?.preventDefault()
+    const trimmed = customAreaInput.trim()
+    if (!trimmed) return
+    const current = interests.areasOfInterest || []
+    if (current.some((a) => a.toLowerCase() === trimmed.toLowerCase())) {
+      setValidationError(`"${trimmed}" is already added`)
+      return
+    }
+    if (current.length >= 3) {
+      setValidationError('You can select at most 3 areas of interest')
+      return
+    }
+    setValidationError('')
+    setInterests({
+      ...interests,
+      areasOfInterest: [...current, trimmed],
+    })
+    setCustomAreaInput('')
+  }
+
+  const handleToggleCareer = (career) => {
+    const current = interests.careerInterests || []
+    if (current.includes(career)) {
+      setInterests({
+        ...interests,
+        careerInterests: current.filter((c) => c !== career),
+      })
+    } else {
+      if (current.length >= 3) {
+        setValidationError('You can select at most 3 target career paths')
+        return
+      }
+      setValidationError('')
+      setInterests({
+        ...interests,
+        careerInterests: [...current, career],
+      })
+    }
+  }
+
+  const handleSetPrimaryCareer = (career) => {
+    const current = interests.careerInterests || []
+    if (!current.includes(career)) return
+    setInterests({
+      ...interests,
+      careerInterests: [career, ...current.filter((c) => c !== career)],
+    })
+  }
+
+  const handleAddCustomCareer = (e) => {
+    e?.preventDefault()
+    const trimmed = customCareerInput.trim()
+    if (!trimmed) return
+    const current = interests.careerInterests || []
+    if (current.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setValidationError(`"${trimmed}" is already added`)
+      return
+    }
+    if (current.length >= 3) {
+      setValidationError('You can select at most 3 target career paths')
+      return
+    }
+    setValidationError('')
+    setInterests({
+      ...interests,
+      careerInterests: [...current, trimmed],
+    })
+    setCustomCareerInput('')
   }
 
   // Save current step data
@@ -277,6 +463,10 @@ export default function Onboarding() {
       stepPayload.data = academic
     } else if (currentSection.key === 'skills') {
       stepPayload.data = { skills: selectedSkills }
+    } else if (currentSection.key === 'experience') {
+      stepPayload.data = { experiences }
+    } else if (currentSection.key === 'projects') {
+      stepPayload.data = { projects, certifications }
     } else if (currentSection.key === 'projects_experience') {
       stepPayload.data = { projects, experiences, certifications }
     } else if (currentSection.key === 'interests_goals') {
@@ -296,8 +486,8 @@ export default function Onboarding() {
           setIsCompleted(true)
         }
       }
-    } catch {
-      setValidationError('Failed to save progress. Please try again.')
+    } catch (err) {
+      setValidationError(err?.data?.error || 'Failed to save progress. Please try again.')
     }
   }
 
@@ -315,19 +505,21 @@ export default function Onboarding() {
               Onboarding Complete!
             </h1>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Congratulations, <span className="font-semibold text-gray-900">{personalInfo.firstName || 'Student'}</span>! Your career profile has been successfully built.
+              Congratulations, <span className="font-semibold text-gray-900">{currentUser?.firstName || 'Student'}</span>! Your career profile has been successfully built.
             </p>
           </div>
 
           <div className="p-4 bg-gray-50 rounded-2xl text-left border border-gray-100 space-y-2">
             <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Degree</span>
-              <span className="font-semibold text-gray-900">{academic.currentDegree}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-600">
               <span>Institution</span>
-              <span className="font-semibold text-gray-900">{academic.university}</span>
+              <span className="font-semibold text-gray-900">{academic.school || 'Completed'}</span>
             </div>
+            {academic.degree && (
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <span>Degree</span>
+                <span className="font-semibold text-gray-900">{academic.degree}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-xs text-gray-600">
               <span>Skills Logged</span>
               <span className="font-semibold text-[#4F46E5]">{selectedSkills.length} skills</span>
@@ -468,27 +660,6 @@ export default function Onboarding() {
               <span className="text-[11px] text-gray-400 block -mt-0.5">Student Career Profile Onboarding</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleSaveStep(false)}
-              className="text-xs text-gray-600 hover:text-gray-900 gap-1.5"
-              disabled={isSavingStep}
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save & Exit</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-              className="text-xs text-gray-500"
-            >
-              Dashboard
-            </Button>
-          </div>
         </div>
 
         {/* Dynamic Progress Bar */}
@@ -503,16 +674,16 @@ export default function Onboarding() {
       {/* Main Container */}
       <main className="max-w-3xl mx-auto px-4 mt-8 space-y-6">
         {/* Step Indicator Header */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            <span>
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
               Step {currentStepIndex + 1} of {sections.length}
             </span>
-            <span className="text-[#4F46E5] font-bold">{progressPercentage}% Completed</span>
           </div>
 
           {/* Stepper Pills */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
             {sections.map((sec, idx) => {
               const Icon = getSectionIcon(sec.key)
               const isPast = idx < currentStepIndex
@@ -523,24 +694,24 @@ export default function Onboarding() {
                   key={sec.key}
                   className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all ${
                     isCurrent
-                      ? 'bg-indigo-50/70 border-indigo-200 text-[#4F46E5] font-semibold'
+                      ? 'bg-indigo-50/80 border-indigo-300 text-indigo-700 font-semibold shadow-xs ring-1 ring-indigo-200'
                       : isPast
-                      ? 'bg-white border-gray-200 text-gray-700'
-                      : 'bg-gray-50/50 border-gray-100 text-gray-400'
+                      ? 'bg-slate-50 border-slate-200 text-slate-700'
+                      : 'bg-white/60 border-slate-100 text-slate-400'
                   }`}
                 >
                   <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs ${
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                       isCurrent
-                        ? 'bg-[#4F46E5] text-white font-bold'
+                        ? 'bg-indigo-600 text-white'
                         : isPast
                         ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-gray-200 text-gray-500'
+                        : 'bg-slate-100 text-slate-500'
                     }`}
                   >
-                    {isPast ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
+                    {isPast ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : idx + 1}
                   </div>
-                  <span className="text-[11px] truncate">{sec.title}</span>
+                  <span className="text-[11px] truncate font-medium">{sec.title}</span>
                 </div>
               )
             })}
@@ -549,56 +720,75 @@ export default function Onboarding() {
 
         {/* Validation Alert */}
         {validationError && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{validationError}</span>
+          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs sm:text-sm flex items-center gap-3 shadow-xs animate-in fade-in">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <span className="font-medium">{validationError}</span>
           </div>
         )}
 
         {/* Step Content Card */}
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-200 shadow-xs space-y-6">
-          <div className="border-b border-gray-100 pb-4">
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">{currentSection.title}</h2>
-            <p className="text-xs text-gray-500 mt-1">{currentSection.description}</p>
+        <div className="bg-white p-6 sm:p-9 rounded-2xl border border-slate-200/90 shadow-xs space-y-6">
+          <div className="border-b border-slate-100 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100 shadow-2xs">
+                {(() => {
+                  const Icon = getSectionIcon(currentSection.key)
+                  return <Icon className="w-5 h-5" />
+                })()}
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{currentSection.title}</h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">{currentSection.description}</p>
+              </div>
+            </div>
           </div>
 
           {/* SECTION 1: ABOUT YOURSELF */}
           {currentSection.key === 'personal_info' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {currentSection.fieldsConfig?.headline?.enabled !== false && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                    Title / Headline
-                    {currentSection.fieldsConfig?.headline?.required && (
-                      <span className="text-rose-500 text-xs">*</span>
-                    )}
-                  </label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                      Title / Headline
+                      {currentSection.fieldsConfig?.headline?.required ? (
+                        <span className="text-rose-500 font-bold">*</span>
+                      ) : (
+                        <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
+                      )}
+                    </label>
+                    <span className="text-[11px] text-slate-400">e.g. Role | Key Specialty</span>
+                  </div>
                   <input
                     type="text"
                     value={personalInfo.headline}
                     onChange={(e) => setPersonalInfo({ ...personalInfo, headline: e.target.value })}
-                    className="input-field text-sm"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                     placeholder="e.g. Software Engineer | Computer Science Student"
                   />
-                  <p className="text-[11px] text-gray-400">
-                    A brief one-line headline summarizing your career focus or professional identity.
-                  </p>
                 </div>
               )}
 
               {currentSection.fieldsConfig?.bio?.enabled !== false && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                    Bio / About
-                    {currentSection.fieldsConfig?.bio?.required && (
-                      <span className="text-rose-500 text-xs">*</span>
-                    )}
-                  </label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                      Bio / About Yourself
+                      {currentSection.fieldsConfig?.bio?.required ? (
+                        <span className="text-rose-500 font-bold">*</span>
+                      ) : (
+                        <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
+                      )}
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      {personalInfo.bio?.length || 0} characters
+                    </span>
+                  </div>
                   <textarea
                     rows={5}
                     value={personalInfo.bio}
                     onChange={(e) => setPersonalInfo({ ...personalInfo, bio: e.target.value })}
-                    className="input-field text-sm resize-none"
+                    className="w-full rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs resize-none leading-relaxed"
                     placeholder="Tell us about yourself, your background, your passions, and what drives your career goals..."
                   />
                 </div>
@@ -608,27 +798,31 @@ export default function Onboarding() {
 
           {/* SECTION 2: ACADEMIC BACKGROUND */}
           {currentSection.key === 'academic_background' && (
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* School */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  School
-                  <span className="text-rose-500 text-xs">*</span>
+                <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                  School / Institution
+                  <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
                   value={academic.school}
                   onChange={(e) => setAcademic({ ...academic, school: e.target.value })}
-                  className="input-field text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                   placeholder="Ex: Boston University"
                 />
               </div>
 
+              {/* Degree & Field of Study */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
                     Degree
-                    {currentSection.fieldsConfig?.degree?.required && (
-                      <span className="text-rose-500 text-xs">*</span>
+                    {currentSection.fieldsConfig?.degree?.required ? (
+                      <span className="text-rose-500 font-bold">*</span>
+                    ) : (
+                      <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
                     )}
                   </label>
                   <input
@@ -636,7 +830,7 @@ export default function Onboarding() {
                     list="degree-catalog-list"
                     value={academic.degree}
                     onChange={(e) => setAcademic({ ...academic, degree: e.target.value })}
-                    className="input-field text-sm"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                     placeholder="Ex: Bachelor of Science"
                   />
                   {configData?.degrees?.length > 0 && (
@@ -649,30 +843,39 @@ export default function Onboarding() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                    Field of study
-                    {currentSection.fieldsConfig?.fieldOfStudy?.required && (
-                      <span className="text-rose-500 text-xs">*</span>
+                  <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                    Field of Study
+                    {currentSection.fieldsConfig?.fieldOfStudy?.required ? (
+                      <span className="text-rose-500 font-bold">*</span>
+                    ) : (
+                      <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
                     )}
                   </label>
                   <input
                     type="text"
                     value={academic.fieldOfStudy}
                     onChange={(e) => setAcademic({ ...academic, fieldOfStudy: e.target.value })}
-                    className="input-field text-sm"
-                    placeholder="Ex: Business"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
+                    placeholder="Ex: Business or Computer Science"
                   />
                 </div>
               </div>
 
+              {/* Start Date & End Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">Start date</label>
+                <div className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/70 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    Start Date
+                    {currentSection.fieldsConfig?.startDate?.required && (
+                      <span className="text-rose-500 font-bold">*</span>
+                    )}
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <select
                       value={academic.startMonth}
                       onChange={(e) => setAcademic({ ...academic, startMonth: e.target.value })}
-                      className="input-field text-sm"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                     >
                       <option value="">Month</option>
                       {MONTHS.map((m) => (
@@ -688,18 +891,24 @@ export default function Onboarding() {
                       placeholder="Year"
                       value={academic.startYear}
                       onChange={(e) => setAcademic({ ...academic, startYear: e.target.value })}
-                      className="input-field text-sm"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">End date (or expected)</label>
+                <div className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/70 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    End Date (or expected)
+                    {currentSection.fieldsConfig?.endDate?.required && (
+                      <span className="text-rose-500 font-bold">*</span>
+                    )}
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <select
                       value={academic.endMonth}
                       onChange={(e) => setAcademic({ ...academic, endMonth: e.target.value })}
-                      className="input-field text-sm"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                     >
                       <option value="">Month</option>
                       {MONTHS.map((m) => (
@@ -715,35 +924,47 @@ export default function Onboarding() {
                       placeholder="Year"
                       value={academic.endYear}
                       onChange={(e) => setAcademic({ ...academic, endYear: e.target.value })}
-                      className="input-field text-sm"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                     />
                   </div>
                 </div>
               </div>
 
+              {/* Grade / GPA */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  Grade
+                <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                  Grade / GPA
+                  {currentSection.fieldsConfig?.grade?.required ? (
+                    <span className="text-rose-500 font-bold">*</span>
+                  ) : (
+                    <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={academic.grade}
                   onChange={(e) => setAcademic({ ...academic, grade: e.target.value })}
-                  className="input-field text-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs"
                   placeholder="Ex: 3.8 GPA or Grade A"
                 />
               </div>
 
+              {/* Activities and societies */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  Activities and societies
+                <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                  Activities and Societies
+                  {currentSection.fieldsConfig?.activities?.required ? (
+                    <span className="text-rose-500 font-bold">*</span>
+                  ) : (
+                    <span className="text-[11px] font-normal text-slate-400">(Optional)</span>
+                  )}
                 </label>
                 <textarea
                   rows={3}
                   value={academic.activities}
                   onChange={(e) => setAcademic({ ...academic, activities: e.target.value })}
-                  className="input-field text-sm resize-none"
-                  placeholder="Ex: Alpha Phi Omega, Marching Band, Volleyball"
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs resize-none"
+                  placeholder="Ex: Alpha Phi Omega, Marching Band, ACM Student Chapter, Volleyball"
                 />
               </div>
             </div>
@@ -755,75 +976,101 @@ export default function Onboarding() {
               {/* Selected Skills summary */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Your Selected Skills ({selectedSkills.length})
-                  </span>
-                  <span className="text-[11px] text-gray-400">
-                    Set proficiency for each: Beginner, Intermediate, or Advanced
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Selected Skills
+                    </span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      {selectedSkills.length}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    Set proficiency: Beginner &bull; Intermediate &bull; Advanced
                   </span>
                 </div>
 
                 {selectedSkills.length === 0 ? (
-                  <div className="p-6 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-center text-xs text-gray-500">
-                    No skills selected yet. Choose from the catalog below or add your custom skills.
+                  <div className="p-6 bg-slate-50/70 rounded-2xl border border-dashed border-slate-300 text-center space-y-1.5">
+                    <Sparkles className="w-6 h-6 text-indigo-400 mx-auto" />
+                    <p className="text-xs font-medium text-slate-600">No skills selected yet</p>
+                    <p className="text-[11px] text-slate-400">
+                      Choose popular skills from the catalog below or add your custom skills.
+                    </p>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2.5">
-                    {selectedSkills.map((sk) => (
-                      <div
-                        key={sk.name}
-                        className="p-2 pl-3 rounded-xl border border-indigo-100 bg-indigo-50/50 flex items-center gap-2 shadow-2xs"
-                      >
-                        <span className="text-xs font-semibold text-gray-900">{sk.name}</span>
-                        <select
-                          value={sk.proficiency}
-                          onChange={(e) => {
-                            const newProf = e.target.value
-                            setSelectedSkills(
-                              selectedSkills.map((s) => (s.name === sk.name ? { ...s, proficiency: newProf } : s))
-                            )
-                          }}
-                          className="text-[11px] py-1 px-1.5 rounded-lg border border-indigo-200 bg-white font-medium text-[#4F46E5] focus:outline-hidden"
+                    {selectedSkills.map((sk) => {
+                      const profColors = {
+                        Beginner: 'bg-sky-50 text-sky-700 border-sky-200',
+                        Intermediate: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                        Advanced: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                      }
+                      return (
+                        <div
+                          key={sk.name}
+                          className="pl-3 pr-2 py-1.5 rounded-xl border border-slate-200/90 bg-white shadow-2xs flex items-center gap-2 transition-all hover:border-slate-300"
                         >
-                          <option value="Beginner">Beginner</option>
-                          <option value="Intermediate">Intermediate</option>
-                          <option value="Advanced">Advanced</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSkills(selectedSkills.filter((s) => s.name !== sk.name))}
-                          className="text-gray-400 hover:text-rose-600 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <span className="text-xs font-semibold text-slate-800">{sk.name}</span>
+                          <select
+                            value={sk.proficiency}
+                            onChange={(e) => {
+                              const newProf = e.target.value
+                              setSelectedSkills(
+                                selectedSkills.map((s) => (s.name === sk.name ? { ...s, proficiency: newProf } : s))
+                              )
+                            }}
+                            className={`text-[11px] font-semibold py-0.5 px-2 rounded-lg border focus:outline-hidden cursor-pointer ${
+                              profColors[sk.proficiency] || 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSkills(selectedSkills.filter((s) => s.name !== sk.name))}
+                            className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
 
               {/* Add Custom Skill Form */}
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
-                <span className="text-xs font-semibold text-gray-700">Add a Custom Skill</span>
-                <form onSubmit={handleAddCustomSkill} className="flex flex-col sm:flex-row gap-2">
+              <div className="p-4 sm:p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">Add a Custom Skill</span>
+                  <span className="text-[11px] text-slate-400">Can't find a skill in the catalog? Add your own</span>
+                </div>
+                <form onSubmit={handleAddCustomSkill} className="flex flex-col sm:flex-row gap-2.5">
                   <input
                     type="text"
-                    placeholder="Enter skill name (e.g. Flutter, PyTorch, C++)"
+                    placeholder="Enter skill name (e.g. Flutter, PyTorch, C++, Figma)"
                     value={customSkillInput}
                     onChange={(e) => setCustomSkillInput(e.target.value)}
-                    className="input-field text-xs flex-1"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 flex-1 shadow-2xs"
                   />
                   <select
                     value={customProficiency}
                     onChange={(e) => setCustomProficiency(e.target.value)}
-                    className="input-field text-xs sm:w-40"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-indigo-500 sm:w-36 shadow-2xs"
                   >
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>
                     <option value="Advanced">Advanced</option>
                   </select>
-                  <Button type="submit" size="sm" className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs gap-1">
-                    <Plus className="w-3.5 h-3.5" /> Add
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl gap-1.5 shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Skill
                   </Button>
                 </form>
               </div>
@@ -831,19 +1078,19 @@ export default function Onboarding() {
               {/* Predefined Skills Catalog Selector */}
               <div className="space-y-3 pt-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-gray-700">
-                    Select from Predefined Skills:
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Browse Skills Catalog
                   </span>
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
                     {skillCategories.map((cat) => (
                       <button
                         key={cat}
                         type="button"
                         onClick={() => setSkillCategoryFilter(cat)}
-                        className={`px-2 py-0.5 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
                           skillCategoryFilter === cat
-                            ? 'bg-[#4F46E5] text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-indigo-600 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
                         {cat}
@@ -852,7 +1099,7 @@ export default function Onboarding() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-1">
                   {filteredCatalogSkills.map((sk) => {
                     const isSelected = selectedSkills.some((s) => s.name.toLowerCase() === sk.name.toLowerCase())
                     return (
@@ -860,14 +1107,18 @@ export default function Onboarding() {
                         key={sk.id || sk.name}
                         type="button"
                         onClick={() => handleToggleCatalogSkill(sk)}
-                        className={`p-2 rounded-xl border text-xs font-medium text-left flex items-center justify-between transition-all ${
+                        className={`p-2.5 rounded-xl border text-xs font-medium text-left flex items-center justify-between transition-all ${
                           isSelected
-                            ? 'bg-[#4F46E5] text-white border-[#4F46E5] shadow-xs'
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50'
                         }`}
                       >
                         <span className="truncate">{sk.name}</span>
-                        {isSelected ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <Plus className="w-3.5 h-3.5 shrink-0 text-gray-400" />}
+                        {isSelected ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-white" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                        )}
                       </button>
                     )
                   })}
@@ -876,194 +1127,302 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* SECTION 4: PROJECTS & EXPERIENCE */}
-          {currentSection.key === 'projects_experience' && (
+          {/* SECTION 4: EXPERIENCE */}
+          {currentSection.key === 'experience' && (
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-indigo-600" />
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Work & Internship Experience ({experiences.length})
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Optional</span>
+                </div>
+
+                {experiences.length === 0 ? (
+                  <div className="p-6 bg-slate-50/70 rounded-2xl border border-dashed border-slate-300 text-center space-y-1">
+                    <p className="text-xs font-medium text-slate-600">No work experience added yet</p>
+                    <p className="text-[11px] text-slate-400">
+                      Add internships, part-time jobs, or freelance gigs below, or click Save & Continue to proceed.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {experiences.map((exp, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs space-y-1 relative group hover:border-slate-300 transition-all"
+                      >
+                        <div className="flex items-center justify-between pr-8">
+                          <h4 className="text-sm font-bold text-slate-900">{exp.roleTitle}</h4>
+                          <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                            {exp.employmentType}
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-600 flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                          {exp.companyName}
+                          {exp.location && (
+                            <>
+                              <span className="text-slate-300">&bull;</span>
+                              <span className="text-slate-500">{exp.location}</span>
+                            </>
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setExperiences(experiences.filter((_, i) => i !== idx))}
+                          className="absolute right-3.5 top-3.5 text-slate-400 hover:text-rose-600 transition-colors p-1"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Experience form */}
+                <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-3.5">
+                  <span className="text-xs font-bold text-slate-800">Add New Work or Internship</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-600">Company Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Google, TechCorp, Local Agency"
+                        value={newExp.companyName}
+                        onChange={(e) => setNewExp({ ...newExp, companyName: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-600">Role / Job Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Frontend Developer Intern"
+                        value={newExp.roleTitle}
+                        onChange={(e) => setNewExp({ ...newExp, roleTitle: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-600">Employment Type</label>
+                      <select
+                        value={newExp.employmentType}
+                        onChange={(e) => setNewExp({ ...newExp, employmentType: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
+                      >
+                        <option value="Internship">Internship</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Freelance">Freelance</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-600">Location</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Remote or City"
+                        value={newExp.location}
+                        onChange={(e) => setNewExp({ ...newExp, location: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddExp}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl gap-1.5 shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Experience to List
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 5: PROJECTS */}
+          {(currentSection.key === 'projects' || currentSection.key === 'projects_experience') && (
             <div className="space-y-6">
               {/* Projects Sub-section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#4F46E5]" />
-                    Projects ({projects.length})
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <h3 className="text-sm font-bold text-slate-900">Projects ({projects.length})</h3>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Optional</span>
                 </div>
 
-                {projects.map((proj, idx) => (
-                  <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-1.5 relative">
-                    <button
-                      type="button"
-                      onClick={() => setProjects(projects.filter((_, i) => i !== idx))}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-rose-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <p className="text-sm font-semibold text-gray-900">{proj.title}</p>
-                    <p className="text-xs text-gray-600">{proj.description}</p>
-                    {proj.technologies?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {proj.technologies.map((t, ti) => (
-                          <Badge key={ti} variant="secondary" className="text-[10px] bg-white border border-gray-200">
-                            {t}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                {projects.length === 0 ? (
+                  <div className="p-6 bg-slate-50/70 rounded-2xl border border-dashed border-slate-300 text-center space-y-1">
+                    <p className="text-xs font-medium text-slate-600">No projects added yet</p>
+                    <p className="text-[11px] text-slate-400">
+                      Showcase course projects, capstone, or personal hacks below.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-2.5">
+                    {projects.map((proj, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs space-y-1.5 relative group hover:border-slate-300 transition-all"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setProjects(projects.filter((_, i) => i !== idx))}
+                          className="absolute right-3.5 top-3.5 text-slate-400 hover:text-rose-600 transition-colors p-1"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <h4 className="text-sm font-bold text-slate-900">{proj.title}</h4>
+                        <p className="text-xs text-slate-600">{proj.description}</p>
+                        {proj.technologies?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {proj.technologies.map((t, ti) => (
+                              <Badge key={ti} variant="secondary" className="text-[10px] bg-slate-50 border border-slate-200 text-slate-700">
+                                {t}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 pt-1 text-xs">
+                          {proj.projectUrl && (
+                            <a
+                              href={proj.projectUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-indigo-600 hover:underline flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Live Demo
+                            </a>
+                          )}
+                          {proj.githubUrl && (
+                            <a
+                              href={proj.githubUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-slate-600 hover:underline flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" /> GitHub Repo
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Add project mini form */}
-                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-2xs space-y-3">
-                  <span className="text-xs font-semibold text-gray-700">Add a Project</span>
-                  <div className="space-y-2">
+                <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-3.5">
+                  <span className="text-xs font-bold text-slate-800">Add a Project</span>
+                  <div className="space-y-2.5">
                     <input
                       type="text"
                       placeholder="Project Name / Title"
                       value={newProject.title}
                       onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
-                      className="input-field text-xs"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
                     />
                     <textarea
                       rows={2}
                       placeholder="Project description, problem solved, and key features"
                       value={newProject.description}
                       onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                      className="input-field text-xs resize-none"
+                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs resize-none"
                     />
                     <input
                       type="text"
                       placeholder="Technologies used (comma separated, e.g. React, Node.js, PostgreSQL)"
                       value={newProject.technologies}
                       onChange={(e) => setNewProject({ ...newProject, technologies: e.target.value })}
-                      className="input-field text-xs"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <input
                         type="url"
                         placeholder="Live Demo Link (optional)"
                         value={newProject.projectUrl}
                         onChange={(e) => setNewProject({ ...newProject, projectUrl: e.target.value })}
-                        className="input-field text-xs"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
                       />
                       <input
                         type="url"
                         placeholder="GitHub / Repo Link (optional)"
                         value={newProject.githubUrl}
                         onChange={(e) => setNewProject({ ...newProject, githubUrl: e.target.value })}
-                        className="input-field text-xs"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
                       />
                     </div>
                   </div>
-                  <Button type="button" size="sm" onClick={handleAddProject} className="bg-[#4F46E5] text-white text-xs gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddProject}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl gap-1.5 shadow-xs"
+                  >
                     <Plus className="w-3.5 h-3.5" /> Add Project to List
                   </Button>
                 </div>
               </div>
 
-              {/* Experiences Sub-section */}
-              <div className="space-y-3 pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-[#4F46E5]" />
-                  Internships & Work Experience ({experiences.length})
-                </h3>
-
-                {experiences.map((exp, idx) => (
-                  <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-1 relative">
-                    <button
-                      type="button"
-                      onClick={() => setExperiences(experiences.filter((_, i) => i !== idx))}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-rose-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {exp.roleTitle} @ {exp.companyName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {exp.employmentType} &bull; {exp.location || 'Remote'}
-                    </p>
-                  </div>
-                ))}
-
-                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-2xs space-y-3">
-                  <span className="text-xs font-semibold text-gray-700">Add Work or Internship</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Company Name"
-                      value={newExp.companyName}
-                      onChange={(e) => setNewExp({ ...newExp, companyName: e.target.value })}
-                      className="input-field text-xs"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Role / Title (e.g. Frontend Intern)"
-                      value={newExp.roleTitle}
-                      onChange={(e) => setNewExp({ ...newExp, roleTitle: e.target.value })}
-                      className="input-field text-xs"
-                    />
-                    <select
-                      value={newExp.employmentType}
-                      onChange={(e) => setNewExp({ ...newExp, employmentType: e.target.value })}
-                      className="input-field text-xs"
-                    >
-                      <option value="Internship">Internship</option>
-                      <option value="Part-time">Part-time</option>
-                      <option value="Full-time">Full-time</option>
-                      <option value="Freelance">Freelance</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Location (e.g. Islamabad or Remote)"
-                      value={newExp.location}
-                      onChange={(e) => setNewExp({ ...newExp, location: e.target.value })}
-                      className="input-field text-xs"
-                    />
-                  </div>
-                  <Button type="button" size="sm" onClick={handleAddExp} className="bg-[#4F46E5] text-white text-xs gap-1">
-                    <Plus className="w-3.5 h-3.5" /> Add Experience to List
-                  </Button>
-                </div>
-              </div>
-
               {/* Certifications & Achievements Sub-section */}
-              <div className="space-y-3 pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-[#4F46E5]" />
-                  Certifications & Achievements ({certifications.length})
-                </h3>
-
-                {certifications.map((c, idx) => (
-                  <div key={idx} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{c.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {c.type} {c.issuer && `&bull; Issued by ${c.issuer}`}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setCertifications(certifications.filter((_, i) => i !== idx))}
-                      className="text-gray-400 hover:text-rose-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              <div className="space-y-3 pt-5 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-indigo-600" />
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Certifications & Achievements ({certifications.length})
+                    </h3>
                   </div>
-                ))}
+                  <span className="text-[11px] text-slate-400">Optional</span>
+                </div>
 
-                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-2xs space-y-3">
-                  <span className="text-xs font-semibold text-gray-700">Add Certification / Achievement</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {certifications.length > 0 && (
+                  <div className="space-y-2">
+                    {certifications.map((c, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between shadow-xs"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{c.title}</p>
+                          <p className="text-xs text-slate-500">
+                            <span className="font-medium text-indigo-600">{c.type}</span>
+                            {c.issuer && ` &bull; Issued by ${c.issuer}`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCertifications(certifications.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-3.5">
+                  <span className="text-xs font-bold text-slate-800">Add Certification / Award</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <input
                       type="text"
-                      placeholder="Title / Name"
+                      placeholder="Title / Name (e.g. AWS Certified Cloud Practitioner)"
                       value={newCert.title}
                       onChange={(e) => setNewCert({ ...newCert, title: e.target.value })}
-                      className="input-field text-xs sm:col-span-2"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 sm:col-span-2 shadow-2xs"
                     />
                     <select
                       value={newCert.type}
                       onChange={(e) => setNewCert({ ...newCert, type: e.target.value })}
-                      className="input-field text-xs"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
                     >
                       <option value="Certification">Certification</option>
                       <option value="Achievement">Achievement / Award</option>
@@ -1073,168 +1432,384 @@ export default function Onboarding() {
                       placeholder="Issuer (e.g. AWS, Coursera, Hackathon)"
                       value={newCert.issuer}
                       onChange={(e) => setNewCert({ ...newCert, issuer: e.target.value })}
-                      className="input-field text-xs"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 shadow-2xs"
                     />
                     <input
                       type="url"
                       placeholder="Credential URL (Optional)"
                       value={newCert.credentialUrl}
                       onChange={(e) => setNewCert({ ...newCert, credentialUrl: e.target.value })}
-                      className="input-field text-xs sm:col-span-2"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 sm:col-span-2 shadow-2xs"
                     />
                   </div>
-                  <Button type="button" size="sm" onClick={handleAddCert} className="bg-[#4F46E5] text-white text-xs gap-1">
-                    <Plus className="w-3.5 h-3.5" /> Add to List
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddCert}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl gap-1.5 shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Certification
                   </Button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* SECTION 5: INTERESTS, PREFERENCES & GOALS */}
+          {/* SECTION 6: INTERESTS, PREFERENCES & GOALS */}
           {currentSection.key === 'interests_goals' && (
             <div className="space-y-6">
               {/* Work Preferences */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-700 block">
-                  Work Preferences (Select all that apply)
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(configData?.workPreferences || ['Remote', 'Onsite', 'Hybrid']).map((wp) => {
-                    const selected = interests.workPreferences.includes(wp)
-                    return (
-                      <button
-                        key={wp}
-                        type="button"
-                        onClick={() => {
-                          if (selected) {
-                            setInterests({
-                              ...interests,
-                              workPreferences: interests.workPreferences.filter((p) => p !== wp),
-                            })
-                          } else {
-                            setInterests({
-                              ...interests,
-                              workPreferences: [...interests.workPreferences, wp],
-                            })
-                          }
-                        }}
-                        className={`p-3.5 rounded-xl border text-center transition-all ${
-                          selected
-                            ? 'bg-indigo-50 border-[#4F46E5] text-[#4F46E5] font-bold shadow-2xs'
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <p className="text-sm">{wp}</p>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Areas of Interest */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-700 block">
-                  Areas of Interest (Select topics that excite you)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {(configData?.areasOfInterest || []).map((area) => {
-                    const selected = interests.areasOfInterest.includes(area)
-                    return (
-                      <button
-                        key={area}
-                        type="button"
-                        onClick={() => {
-                          if (selected) {
-                            setInterests({
-                              ...interests,
-                              areasOfInterest: interests.areasOfInterest.filter((a) => a !== area),
-                            })
-                          } else {
-                            setInterests({
-                              ...interests,
-                              areasOfInterest: [...interests.areasOfInterest, area],
-                            })
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
-                          selected
-                            ? 'bg-[#4F46E5] text-white border-[#4F46E5]'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                        }`}
-                      >
-                        {area}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Career Interests (Optional) */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-gray-700 block">
-                    Target Career Paths (Optional - you can select multiple or add later)
+                  <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                    Work Preferences <span className="text-rose-500 font-bold">*</span>
                   </label>
+                  <p className="text-[11px] text-slate-400">First selected is Primary</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {(configData?.careerInterests || []).map((career) => {
-                    const selected = interests.careerInterests.includes(career)
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Remote', icon: Laptop, desc: 'Work from anywhere' },
+                    { label: 'Onsite', icon: Building2, desc: 'Office based' },
+                    { label: 'Hybrid', icon: Globe, desc: 'Flexible mix' },
+                  ].map(({ label, icon: Icon, desc }) => {
+                    const idx = interests.workPreferences.indexOf(label)
+                    const selected = idx > -1
+                    const isPrimary = idx === 0
                     return (
-                      <button
-                        key={career}
-                        type="button"
-                        onClick={() => {
-                          if (selected) {
-                            setInterests({
-                              ...interests,
-                              careerInterests: interests.careerInterests.filter((c) => c !== career),
-                            })
-                          } else {
-                            setInterests({
-                              ...interests,
-                              careerInterests: [...interests.careerInterests, career],
-                            })
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                      <div
+                        key={label}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
                           selected
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            ? 'bg-indigo-50/90 border-indigo-300 text-indigo-900 shadow-xs ring-1 ring-indigo-200'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/60'
                         }`}
                       >
-                        {career}
-                      </button>
+                        <div
+                          className="flex items-start justify-between cursor-pointer"
+                          onClick={() => handleToggleWorkPref(label)}
+                        >
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                              selected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          {selected && (
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                isPrimary ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-indigo-200/80 text-indigo-800'
+                              }`}
+                            >
+                              {isPrimary ? '★ Primary' : 'Secondary'}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => handleToggleWorkPref(label)}
+                        >
+                          <p className="text-sm font-semibold">{label}</p>
+                          <p className="text-[11px] text-slate-400 font-normal">{desc}</p>
+                        </div>
+                        {selected && !isPrimary && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrimaryWorkPref(label)}
+                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 py-1 px-2 rounded-lg bg-white border border-indigo-200 hover:bg-indigo-50 transition-colors w-full text-center"
+                          >
+                            Set as Primary
+                          </button>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
+              </div>
+
+              {/* Areas of Interest (Max 3, Primary & Secondary) */}
+              <div className="space-y-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                      Areas of Interest <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Select up to 3 domains. The first selection is Primary, and others are Secondary.
+                    </p>
+                  </div>
+                  <Badge
+                    className={
+                      interests.areasOfInterest.length >= 3
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 text-xs font-bold'
+                        : 'bg-indigo-50 text-indigo-700 border-indigo-100 text-xs'
+                    }
+                  >
+                    {interests.areasOfInterest.length} / 3 Selected
+                  </Badge>
+                </div>
+
+                {/* Active Selections */}
+                {interests.areasOfInterest.length > 0 && (
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Active Selections
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {interests.areasOfInterest.map((area, idx) => {
+                        const isPrimary = idx === 0
+                        return (
+                          <div
+                            key={area}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                              isPrimary
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            }`}
+                          >
+                            <span>{area}</span>
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                isPrimary ? 'bg-white/25 text-white' : 'bg-indigo-200 text-indigo-800'
+                              }`}
+                            >
+                              {isPrimary ? '★ Primary' : 'Secondary'}
+                            </span>
+                            {!isPrimary && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetPrimaryArea(area)}
+                                className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 underline ml-1"
+                                title="Promote to Primary"
+                              >
+                                Set Primary
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleArea(area)}
+                              className="hover:text-rose-500 ml-1 font-bold"
+                              title="Remove"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Catalog Options */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-slate-600 block">Quick Recommendations:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {allSuggestedAreas.map((area) => {
+                      const isSelected = interests.areasOfInterest.includes(area)
+                      return (
+                        <button
+                          key={area}
+                          type="button"
+                          onClick={() => handleToggleArea(area)}
+                          disabled={!isSelected && interests.areasOfInterest.length >= 3}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                              : interests.areasOfInterest.length >= 3
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {area} {isSelected ? '✓' : '+'}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Area Input */}
+                {interests.areasOfInterest.length < 3 && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Or type custom interest domain (e.g. Cloud Security, Embedded Systems)"
+                      value={customAreaInput}
+                      onChange={(e) => setCustomAreaInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddCustomArea()
+                        }
+                      }}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all shadow-2xs"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddCustomArea}
+                      size="sm"
+                      variant="outline"
+                      className="text-xs shrink-0 gap-1 rounded-xl border-slate-200 hover:bg-slate-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Target Career Paths (Max 3, Primary & Secondary) */}
+              <div className="space-y-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                      Target Career Paths <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Select up to 3 target roles. The first selection is Primary, and others are Secondary.
+                    </p>
+                  </div>
+                  <Badge
+                    className={
+                      interests.careerInterests.length >= 3
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 text-xs font-bold'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-100 text-xs'
+                    }
+                  >
+                    {interests.careerInterests.length} / 3 Selected
+                  </Badge>
+                </div>
+
+                {/* Active Selections */}
+                {interests.careerInterests.length > 0 && (
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Active Selections
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {interests.careerInterests.map((career, idx) => {
+                        const isPrimary = idx === 0
+                        return (
+                          <div
+                            key={career}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                              isPrimary
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            <span>{career}</span>
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                isPrimary ? 'bg-white/25 text-white' : 'bg-emerald-200 text-emerald-800'
+                              }`}
+                            >
+                              {isPrimary ? '★ Primary' : 'Secondary'}
+                            </span>
+                            {!isPrimary && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetPrimaryCareer(career)}
+                                className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 underline ml-1"
+                                title="Promote to Primary"
+                              >
+                                Set Primary
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCareer(career)}
+                              className="hover:text-rose-500 ml-1 font-bold"
+                              title="Remove"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Catalog Options */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-slate-600 block">Quick Recommendations:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {allSuggestedCareers.map((career) => {
+                      const isSelected = interests.careerInterests.includes(career)
+                      return (
+                        <button
+                          key={career}
+                          type="button"
+                          onClick={() => handleToggleCareer(career)}
+                          disabled={!isSelected && interests.careerInterests.length >= 3}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                              : interests.careerInterests.length >= 3
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {career} {isSelected ? '✓' : '+'}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Career Input */}
+                {interests.careerInterests.length < 3 && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Or type custom career path (e.g. Solution Architect, Security Analyst)"
+                      value={customCareerInput}
+                      onChange={(e) => setCustomCareerInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddCustomCareer()
+                        }
+                      }}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all shadow-2xs"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddCustomCareer}
+                      size="sm"
+                      variant="outline"
+                      className="text-xs shrink-0 gap-1 rounded-xl border-slate-200 hover:bg-slate-50"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Goals */}
               <div className="space-y-4 pt-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
-                    Short-Term Goal (Next 6-12 months)
+                  <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
+                    Short-Term Career Goal (Next 6-12 months) <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <textarea
                     rows={2}
                     value={interests.shortTermGoal}
                     onChange={(e) => setInterests({ ...interests, shortTermGoal: e.target.value })}
-                    className="input-field text-sm resize-none"
+                    className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs resize-none"
                     placeholder="e.g. Secure a Summer Internship in Software Development, master React and Tailwind CSS..."
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
-                    Long-Term Goal (3-5 years)
+                  <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
+                    Long-Term Career Vision (3-5 years) <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <textarea
                     rows={2}
                     value={interests.longTermGoal}
                     onChange={(e) => setInterests({ ...interests, longTermGoal: e.target.value })}
-                    className="input-field text-sm resize-none"
-                    placeholder="e.g. Become a Senior Full-Stack Cloud Architect or launch an AI startup..."
+                    className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 transition-all shadow-xs resize-none"
+                    placeholder="e.g. Grow into a Senior Full-Stack Engineer, lead engineering teams, or build an AI startup..."
                   />
                 </div>
               </div>
@@ -1242,7 +1817,7 @@ export default function Onboarding() {
           )}
 
           {/* Action Buttons */}
-          <div className="pt-6 border-t border-gray-100 flex items-center justify-between gap-3">
+          <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-3">
             <Button
               type="button"
               variant="outline"
@@ -1252,7 +1827,7 @@ export default function Onboarding() {
                 setCurrentStepIndex((prev) => Math.max(0, prev - 1))
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
-              className="text-xs text-gray-700 gap-1.5"
+              className="text-xs font-medium text-slate-700 px-4 py-2.5 rounded-xl border-slate-200 hover:bg-slate-50 gap-1.5 transition-all"
             >
               <ChevronLeft className="w-4 h-4" /> Back
             </Button>
@@ -1261,7 +1836,7 @@ export default function Onboarding() {
               type="button"
               onClick={() => handleSaveStep(true)}
               disabled={isSavingStep || isCompleting}
-              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs px-6 py-2 gap-1.5 shadow-md shadow-indigo-100"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold px-7 py-2.5 rounded-xl gap-2 shadow-sm shadow-indigo-200 transition-all cursor-pointer"
             >
               {currentStepIndex === sections.length - 1 ? (
                 <>

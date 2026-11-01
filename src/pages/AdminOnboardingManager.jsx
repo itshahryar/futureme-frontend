@@ -27,8 +27,6 @@ import {
   XCircle,
   Plus,
   Trash2,
-  ArrowUp,
-  ArrowDown,
   ToggleLeft,
   ToggleRight,
   Search,
@@ -39,6 +37,21 @@ import {
   Settings2,
   BookOpen,
 } from 'lucide-react'
+
+const FIELD_ORDER_BY_SECTION = {
+  personal_info: ['headline', 'bio'],
+  academic_background: [
+    'school',
+    'degree',
+    'fieldOfStudy',
+    'startDate',
+    'endDate',
+    'grade',
+    'activities',
+  ],
+  experience: ['experienceRequired'],
+  projects: ['projectsRequired', 'certificationsRequired'],
+}
 
 export default function AdminOnboardingManager() {
   const [activeTab, setActiveTab] = useState('sections') // 'sections' | 'degrees' | 'skills' | 'options' | 'stats'
@@ -117,33 +130,18 @@ export default function AdminOnboardingManager() {
     }
   }
 
-  // Handle field requirement toggle (Required / Optional / Disabled)
+  // Handle field requirement toggle (Required / Optional)
   const handleToggleFieldRequirement = async (section, fieldKey) => {
     const currentConfig = { ...(section.fieldsConfig || {}) }
-    const fieldObj = currentConfig[fieldKey] || { required: true, enabled: true }
+    const fieldObj = currentConfig[fieldKey] || { required: false, enabled: true }
 
-    // Toggle logic: required -> optional -> disabled -> required
-    let nextRequired = false
-    let nextEnabled = true
-
-    if (fieldObj.required && fieldObj.enabled) {
-      // Switch to Optional
-      nextRequired = false
-      nextEnabled = true
-    } else if (!fieldObj.required && fieldObj.enabled) {
-      // Switch to Disabled / Hidden
-      nextRequired = false
-      nextEnabled = false
-    } else {
-      // Switch to Required
-      nextRequired = true
-      nextEnabled = true
-    }
+    // Toggle directly between Required (true) and Optional (false)
+    const nextRequired = !fieldObj.required
 
     currentConfig[fieldKey] = {
       ...fieldObj,
       required: nextRequired,
-      enabled: nextEnabled,
+      enabled: true,
     }
 
     try {
@@ -151,7 +149,7 @@ export default function AdminOnboardingManager() {
         key: section.key,
         fieldsConfig: currentConfig,
       }).unwrap()
-      showNotification(`Updated requirement for field: ${fieldObj.label || fieldKey}`)
+      showNotification(`${fieldObj.label || fieldKey} is now ${nextRequired ? 'Required' : 'Optional'}`)
     } catch {
       showNotification('Failed to update field configuration', true)
     }
@@ -226,11 +224,6 @@ export default function AdminOnboardingManager() {
           <p className="page-subtitle mt-1">
             Configure what students see during onboarding, manage standard degree and skill catalogs, and monitor progress.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge className="bg-indigo-50 text-[#4F46E5] border border-indigo-200 px-3 py-1 text-xs font-semibold">
-            Admin Controlled Flow
-          </Badge>
         </div>
       </div>
 
@@ -315,12 +308,7 @@ export default function AdminOnboardingManager() {
       {/* TAB 1: SECTIONS & STEP CONFIGURATION */}
       {activeTab === 'sections' && (
         <div className="space-y-4">
-          <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-start gap-3">
-            <Sliders className="w-5 h-5 text-[#4F46E5] shrink-0 mt-0.5" />
-            <div className="text-xs text-indigo-950 leading-relaxed">
-              <span className="font-semibold">Section Control Engine:</span> Disabling a section immediately hides that step from all student onboarding flows. You can also customize whether individual fields are <strong>Required</strong>, <strong>Optional</strong>, or <strong>Hidden</strong>.
-            </div>
-          </div>
+
 
           {loadingSections ? (
             <div className="py-12 text-center text-sm text-gray-500">Loading section configuration...</div>
@@ -329,64 +317,42 @@ export default function AdminOnboardingManager() {
               {sections.map((section, idx) => (
                 <div
                   key={section.id || section.key}
-                  className={`p-5 rounded-xl border transition-all ${
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                     section.isEnabled
-                      ? 'bg-white border-gray-200 shadow-xs'
-                      : 'bg-gray-50/70 border-gray-200 opacity-75'
+                      ? 'bg-white border-gray-200 shadow-2xs'
+                      : 'bg-gray-50/70 border-gray-200/70 opacity-75'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex flex-col items-center gap-1 mt-0.5">
-                        <button
-                          onClick={() => handleMoveSection(idx, 'up')}
-                          disabled={idx === 0}
-                          className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-20 hover:bg-gray-100 rounded"
-                          title="Move step up"
-                        >
-                          <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                          #{idx + 1}
-                        </span>
-                        <button
-                          onClick={() => handleMoveSection(idx, 'down')}
-                          disabled={idx === sections.length - 1}
-                          className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-20 hover:bg-gray-100 rounded"
-                          title="Move step down"
-                        >
-                          <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
+                    <div className="flex items-center gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-base font-semibold text-gray-900">{section.title}</h3>
-                          <Badge
-                            className={
+                          <h3 className="text-sm font-semibold text-gray-900">{section.title}</h3>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                               section.isEnabled
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-gray-100 text-gray-600 border-gray-300'
-                            }
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}
                           >
-                            {section.isEnabled ? 'Active in Onboarding' : 'Disabled (Skipped)'}
-                          </Badge>
+                            <span className={`w-1.5 h-1.5 rounded-full ${section.isEnabled ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                            {section.isEnabled ? 'Active' : 'Disabled'}
+                          </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{section.description}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{section.description}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <Button
-                        size="sm"
-                        variant={section.isEnabled ? 'outline' : 'default'}
+                    <div className="flex items-center gap-2.5 self-end sm:self-center">
+                      <button
+                        type="button"
                         onClick={() => handleToggleSection(section)}
-                        className={`text-xs gap-1.5 ${
-                          !section.isEnabled
-                            ? 'bg-[#4F46E5] hover:bg-[#4338CA] text-white'
-                            : 'text-gray-700'
-                        }`}
                         disabled={isUpdatingSection}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                          section.isEnabled
+                            ? 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                            : 'border-indigo-600 bg-[#4F46E5] text-white hover:bg-[#4338CA]'
+                        }`}
                       >
                         {section.isEnabled ? (
                           <>
@@ -397,52 +363,70 @@ export default function AdminOnboardingManager() {
                             <ToggleLeft className="w-4 h-4" /> Enable Section
                           </>
                         )}
-                      </Button>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Field-level requirement controls */}
+                  {/* Minimal Field-level requirement toggles */}
                   {section.fieldsConfig && Object.keys(section.fieldsConfig).length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2.5">
-                        Field Controls for this Section:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {Object.entries(section.fieldsConfig).map(([fKey, fVal]) => {
-                          if (typeof fVal !== 'object' || fVal === null) return null
-                          const isReq = fVal.required
-                          const isEn = fVal.enabled
-
-                          let statusText = 'Required'
-                          let badgeClass = 'bg-rose-50 text-rose-700 border-rose-200'
-
-                          if (!isEn) {
-                            statusText = 'Hidden'
-                            badgeClass = 'bg-gray-100 text-gray-500 border-gray-300'
-                          } else if (!isReq) {
-                            statusText = 'Optional'
-                            badgeClass = 'bg-amber-50 text-amber-700 border-amber-200'
-                          }
-
-                          return (
-                            <button
-                              key={fKey}
-                              type="button"
-                              onClick={() => handleToggleFieldRequirement(section, fKey)}
-                              className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs flex items-center gap-2 text-gray-700 shadow-2xs transition-colors"
-                              title="Click to cycle: Required -> Optional -> Hidden"
-                            >
-                              <span className="font-medium">{fVal.label || fKey}:</span>
-                              <Badge className={`text-[10px] px-1.5 py-0 font-medium ${badgeClass}`}>
-                                {statusText}
-                              </Badge>
-                            </button>
-                          )
-                        })}
+                    <div className="mt-4 pt-3.5 border-t border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
+                          Field Requirements
+                        </span>
                       </div>
-                      <p className="text-[11px] text-gray-400 mt-2 italic">
-                        Tip: Click any field pill above to cycle through Required &rarr; Optional &rarr; Hidden.
-                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(() => {
+                          const order = FIELD_ORDER_BY_SECTION[section.key] || []
+                          const entries = Object.entries(section.fieldsConfig).filter(
+                            ([, fVal]) => typeof fVal === 'object' && fVal !== null
+                          )
+                          entries.sort(([a], [b]) => {
+                            const idxA = order.indexOf(a)
+                            const idxB = order.indexOf(b)
+                            if (idxA !== -1 && idxB !== -1) return idxA - idxB
+                            if (idxA !== -1) return -1
+                            if (idxB !== -1) return 1
+                            return 0
+                          })
+
+                          return entries.map(([fKey, fVal]) => {
+                            const isReq = !!fVal.required
+
+                            return (
+                              <div
+                                key={fKey}
+                                className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-gray-200/80 bg-gray-50/60"
+                              >
+                                <span className="text-xs font-medium text-gray-700">
+                                  {fVal.label || fKey}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleFieldRequirement(section, fKey)}
+                                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
+                                    isReq ? 'bg-[#4F46E5]' : 'bg-gray-300'
+                                  }`}
+                                  title={isReq ? 'Click to make Optional' : 'Click to make Required'}
+                                >
+                                  <span
+                                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out mt-0.5 ml-0.5 ${
+                                      isReq ? 'translate-x-3' : 'translate-x-0'
+                                    }`}
+                                  />
+                                </button>
+                                <span
+                                  className={`text-[10px] font-medium ${
+                                    isReq ? 'text-indigo-600' : 'text-gray-400'
+                                  }`}
+                                >
+                                  {isReq ? 'Required' : 'Optional'}
+                                </span>
+                              </div>
+                            )
+                          })
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>

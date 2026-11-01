@@ -137,3 +137,40 @@ body {
   font-size: 0.625rem; /* 10px */
   color: #6B7280;
 }
+
+
+/* ========================================================
+   Form Input Styles
+   ======================================================== */
+.input-field {
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid #E2E8F0;
+  background-color: #FFFFFF;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #0F172A;
+  transition: all 0.15s ease-in-out;
+  outline: none;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.input-field:focus {
+  border-color: #4F46E5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.input-field::placeholder {
+  color: #94A3B8;
+}
+
+.input-field:disabled {
+  background-color: #F8FAFC;
+  color: #94A3B8;
+  cursor: not-allowed;
+}
+
+select.input-field {
+  cursor: pointer;
+}

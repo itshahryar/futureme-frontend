@@ -39,6 +39,15 @@ export const onboardingApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Profile', 'User'],
     }),
 
+    saveProfilePreferences: builder.mutation({
+      query: (preferencesData) => ({
+        url: '/profile/preferences',
+        method: 'PUT',
+        body: preferencesData,
+      }),
+      invalidatesTags: ['Profile', 'User'],
+    }),
+
     addProject: builder.mutation({
       query: (project) => ({
         url: '/profile/projects',
@@ -82,9 +91,71 @@ export const onboardingApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Profile'],
     }),
 
+    updateCertification: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/profile/certifications/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
     deleteCertification: builder.mutation({
       query: (id) => ({
         url: `/profile/certifications/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    updateProject: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/profile/projects/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    updateExperience: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/profile/experiences/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    saveProfileSkills: builder.mutation({
+      query: (skills) => ({
+        url: '/profile/skills',
+        method: 'PUT',
+        body: { skills },
+      }),
+      invalidatesTags: ['Profile', 'OnboardingStats'],
+    }),
+
+    addSkill: builder.mutation({
+      query: (skill) => ({
+        url: '/profile/skills',
+        method: 'POST',
+        body: skill,
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    updateSkill: builder.mutation({
+      query: ({ id, proficiency }) => ({
+        url: `/profile/skills/${id}`,
+        method: 'PUT',
+        body: { proficiency },
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    deleteSkill: builder.mutation({
+      query: (id) => ({
+        url: `/profile/skills/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Profile'],
@@ -210,12 +281,20 @@ export const {
   useSaveOnboardingStepMutation,
   useCompleteOnboardingMutation,
   useUpdateProfileMutation,
+  useSaveProfilePreferencesMutation,
   useAddProjectMutation,
+  useUpdateProjectMutation,
   useDeleteProjectMutation,
   useAddExperienceMutation,
+  useUpdateExperienceMutation,
   useDeleteExperienceMutation,
   useAddCertificationMutation,
+  useUpdateCertificationMutation,
   useDeleteCertificationMutation,
+  useAddSkillMutation,
+  useUpdateSkillMutation,
+  useDeleteSkillMutation,
+  useSaveProfileSkillsMutation,
   useGetAdminSectionsQuery,
   useUpdateAdminSectionMutation,
   useReorderAdminSectionsMutation,
