@@ -17,6 +17,7 @@ import {
 } from '@/store/api/onboardingApiSlice'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import Loading from '@/components/ui/Loading'
 import {
   Sliders,
   GraduationCap,
@@ -311,7 +312,11 @@ export default function AdminOnboardingManager() {
 
 
           {loadingSections ? (
-            <div className="py-12 text-center text-sm text-gray-500">Loading section configuration...</div>
+            <Loading
+              variant="card"
+              message="Loading section configuration..."
+              description="Retrieving dynamic onboarding steps and form fields."
+            />
           ) : (
             <div className="space-y-3">
               {sections.map((section, idx) => (

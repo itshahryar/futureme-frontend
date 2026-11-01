@@ -7,6 +7,16 @@ export const apiSlice = createApi({
     // Sends and receives HTTP-only cookies across requests
     credentials: 'include',
   }),
-  tagTypes: ['User', 'Users', 'OnboardingConfig', 'OnboardingSections', 'Catalogs', 'OnboardingStats', 'Profile'],
+  tagTypes: [
+    'User',
+    'Users',
+    'OnboardingConfig',
+    'OnboardingSections',
+    'Catalogs',
+    'OnboardingStats',
+    'Profile',
+    'SkillAnalysis',
+    'LearningPath',
+  ],
   endpoints: () => ({}),
 })

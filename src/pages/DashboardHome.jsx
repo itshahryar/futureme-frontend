@@ -4,6 +4,7 @@ import { selectCurrentUser } from '@/store/slices/authSlice'
 import { useGetStudentProfileQuery } from '@/store/api/onboardingApiSlice'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import Loading from '@/components/ui/Loading'
 import {
   LayoutDashboard,
   GraduationCap,
@@ -13,6 +14,8 @@ import {
   Sliders,
   Users,
   Compass,
+  Target,
+  BookOpen,
 } from 'lucide-react'
 
 export default function DashboardHome() {
@@ -28,6 +31,16 @@ export default function DashboardHome() {
   const profile = profileData?.profile
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'User'
   const completionPercentage = profile?.completionPercentage || 0
+
+  if (loadingProfile) {
+    return (
+      <Loading
+        variant="page"
+        message="Loading your dashboard..."
+        description="Gathering your profile status, career goals, and personalized roadmaps."
+      />
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -95,6 +108,44 @@ export default function DashboardHome() {
           >
             View / Edit Profile <ArrowRight className="w-3.5 h-3.5" />
           </Button>
+        </div>
+      )}
+
+      {/* STUDENT: AI Skill Analysis & Learning Path Hero Card */}
+      {isStudent && profile && profile.isOnboarded && (
+        <div className="p-6 rounded-2xl bg-linear-to-r from-indigo-50/60 via-purple-50/30 to-white border border-indigo-150 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-gray-900">AI Skill Analysis & Learning Path</h3>
+                <Badge className="bg-indigo-100 text-[#4F46E5] border-0 text-[10px] font-bold">
+                  AI Powered
+                </Badge>
+              </div>
+              <p className="text-xs text-gray-600 max-w-xl leading-relaxed">
+                See how your skills match real jobs, find what skills you need to learn, and follow your step-by-step learning roadmap.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              onClick={() => navigate('/dashboard/skill-analysis')}
+              variant="outline"
+              className="text-xs font-semibold px-3 py-2 rounded-xl gap-1.5 border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5] cursor-pointer"
+            >
+              <Target className="w-3.5 h-3.5" /> Skill Gap Analysis
+            </Button>
+            <Button
+              onClick={() => navigate('/dashboard/learning-roadmap')}
+              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-4 py-2 rounded-xl gap-1.5 shadow-xs cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5" /> Learning Roadmap <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       )}
 

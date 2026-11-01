@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import Loading from '@/components/ui/Loading'
 import {
   Dialog,
   DialogContent,
@@ -287,9 +288,13 @@ export default function DashboardUsers() {
       {/* Users Table Card */}
       <div className="rounded-xl bg-white border border-[#E5E7EB] shadow-xs overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-xs text-[#6B7280]">
-            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-[#4F46E5] mb-2" />
-            Loading registered users...
+          <div className="p-6">
+            <Loading
+              variant="card"
+              size="sm"
+              message="Loading registered users..."
+              description="Fetching accounts from PostgreSQL database."
+            />
           </div>
         ) : isError ? (
           <div className="p-8 text-center text-xs text-[#DC2626]">

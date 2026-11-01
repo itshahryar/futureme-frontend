@@ -10,6 +10,8 @@ import {
 } from '@/store/api/onboardingApiSlice'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import Loading from '@/components/ui/Loading'
+import Select from '@/components/ui/select'
 import {
   GraduationCap,
   Sparkles,
@@ -176,10 +178,12 @@ export default function Onboarding() {
   if (loadingConfig || loadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-3 border-[#4F46E5] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-medium text-gray-600">Loading your personalized onboarding...</p>
-        </div>
+        <Loading
+          variant="card"
+          size="lg"
+          message="Preparing your personalized onboarding..."
+          description="Fetching your career preferences and dynamic step configuration."
+        />
       </div>
     )
   }
@@ -985,7 +989,7 @@ export default function Onboarding() {
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-400">
-                    Set proficiency: Beginner &bull; Intermediate &bull; Advanced
+                    Choose your level: Beginner &bull; Intermediate &bull; Advanced
                   </span>
                 </div>
 
@@ -1056,15 +1060,17 @@ export default function Onboarding() {
                     onChange={(e) => setCustomSkillInput(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-3 focus:ring-indigo-100 flex-1 shadow-2xs"
                   />
-                  <select
-                    value={customProficiency}
-                    onChange={(e) => setCustomProficiency(e.target.value)}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-indigo-500 sm:w-36 shadow-2xs"
-                  >
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
+                  <div className="sm:w-36">
+                    <Select
+                      value={customProficiency}
+                      onChange={(val) => setCustomProficiency(val)}
+                      options={[
+                        { value: 'Beginner', label: 'Beginner' },
+                        { value: 'Intermediate', label: 'Intermediate' },
+                        { value: 'Advanced', label: 'Advanced' },
+                      ]}
+                    />
+                  </div>
                   <Button
                     type="submit"
                     size="sm"

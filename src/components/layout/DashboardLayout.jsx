@@ -5,6 +5,7 @@ import { selectCurrentUser, logoutUser, setCredentials } from '@/store/slices/au
 import { useLogoutMutation, useGetMeQuery } from '@/store/api/authApiSlice'
 import { useGetStudentProfileQuery } from '@/store/api/onboardingApiSlice'
 import { Button } from '@/components/ui/button'
+import Loading from '@/components/ui/Loading'
 import {
   GraduationCap,
   Home,
@@ -18,7 +19,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sliders,
-  User
+  User,
+  Sparkles,
+  Target,
+  BookOpen
 } from 'lucide-react'
 
 export default function DashboardLayout() {
@@ -89,6 +93,28 @@ export default function DashboardLayout() {
     }
   }
 
+  // Only show blocking fullscreen loader if onboarding status is not yet known
+  const onboardingKnown = user?.isOnboarded !== undefined || profileData?.profile !== undefined
+  if (isStudent && loadingProfile && !onboardingKnown) {
+    return (
+      <Loading
+        variant="fullscreen"
+        message="Loading your workspace..."
+        description="Verifying your account and student profile status."
+      />
+    )
+  }
+
+  if (isLoggingOut) {
+    return (
+      <Loading
+        variant="fullscreen"
+        message="Signing out..."
+        description="Safely ending your session."
+      />
+    )
+  }
+
   // Navigation items for both STUDENT and ADMIN
   const navItems = [
     {
@@ -103,6 +129,18 @@ export default function DashboardLayout() {
             name: 'My Profile',
             to: '/dashboard/profile',
             icon: GraduationCap,
+            end: false,
+          },
+          {
+            name: 'Skill Gap Analysis',
+            to: '/dashboard/skill-analysis',
+            icon: Target,
+            end: false,
+          },
+          {
+            name: 'AI Learning Roadmap',
+            to: '/dashboard/learning-roadmap',
+            icon: BookOpen,
             end: false,
           },
         ]
@@ -171,7 +209,7 @@ export default function DashboardLayout() {
       {/* Mobile Backdrop Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 z-40 md:hidden backdrop-blur-xs"
+          className="fixed inset-0 bg-slate-900/40 z-40 md:hidden backdrop-blur-xs cursor-pointer"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}

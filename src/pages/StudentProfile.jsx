@@ -18,6 +18,8 @@ import {
 } from '@/store/api/onboardingApiSlice'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import Loading from '@/components/ui/Loading'
+import Select from '@/components/ui/select'
 import {
   User,
   GraduationCap,
@@ -588,10 +590,11 @@ export default function StudentProfile() {
 
   if (isLoading) {
     return (
-      <div className="py-20 text-center">
-        <div className="w-8 h-8 border-3 border-[#4F46E5] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-gray-500 font-medium">Loading profile...</p>
-      </div>
+      <Loading
+        variant="page"
+        message="Loading your student profile..."
+        description="Fetching your education history, skills, projects, and career preferences."
+      />
     )
   }
 
@@ -1128,10 +1131,10 @@ export default function StudentProfile() {
             <div>
               <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#4F46E5]" />
-                Skills & Proficiencies
+                Your Skills
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                Select skills from the catalog or add custom skills, choose your proficiency level, and save your changes.
+                Select skills from the list or add your own, choose your skill level, and save your changes.
               </p>
             </div>
             <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-100 text-xs">
@@ -1211,17 +1214,14 @@ export default function StudentProfile() {
                 />
               </div>
               <div className="sm:col-span-3">
-                <select
+                <Select
                   value={customProficiency}
-                  onChange={(e) => setCustomProficiency(e.target.value)}
-                  className="input-field text-xs w-full"
-                >
-                  {PROFICIENCY_LEVELS.map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      {lvl}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setCustomProficiency(val)}
+                  options={PROFICIENCY_LEVELS.map((lvl) => ({
+                    value: lvl,
+                    label: lvl,
+                  }))}
+                />
               </div>
               <div className="sm:col-span-3">
                 <Button
@@ -1275,7 +1275,7 @@ export default function StudentProfile() {
                     </div>
 
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
-                      <span className="text-[10px] text-gray-500 font-medium">Proficiency:</span>
+                      <span className="text-[10px] text-gray-500 font-medium">Level:</span>
                       <select
                         value={sk.proficiency}
                         onChange={(e) => handleUpdateSkillProficiency(sk.name, e.target.value)}
