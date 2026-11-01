@@ -14,5 +14,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    open: true, // Automatically opens Chrome / default browser on npm run dev
+  },
 })
 
