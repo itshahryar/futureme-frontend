@@ -38,7 +38,6 @@ import {
   ChevronUp,
   Check,
   Calendar,
-  Lightbulb,
   ExternalLink,
   Code2,
   HelpCircle,
@@ -50,18 +49,23 @@ import {
   Bookmark,
   ArrowRight,
   TrendingUp,
-  Layers,
   Award,
-  Clock,
-  AlertCircle,
   Lock,
+  Layers,
+  ChevronRight,
+  Compass,
+  PlayCircle,
 } from 'lucide-react'
 
 export default function LearningRoadmapPage() {
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
 
+  // UI state
+  const [activeView, setActiveView] = useState('roadmap') // 'roadmap' | 'assessments'
+  const [selectedMilestoneFilter, setSelectedMilestoneFilter] = useState('all') // 'all' | number
   const [expandedTopics, setExpandedTopics] = useState({})
+  const [collapsedMilestones, setCollapsedMilestones] = useState({})
   const [copiedCodeIdx, setCopiedCodeIdx] = useState(null)
   const [successToast, setSuccessToast] = useState('')
   const [optimisticOverrides, setOptimisticOverrides] = useState({})
@@ -79,7 +83,7 @@ export default function LearningRoadmapPage() {
   const [quizCurrentIdx, setQuizCurrentIdx] = useState(0)
   const [quizResult, setQuizResult] = useState(null)
 
-  // Direct Skill Update Modal
+  // Skill Update Modal
   const [skillModalOpen, setSkillModalOpen] = useState(false)
   const [skillToUpdate, setSkillToUpdate] = useState('')
   const [skillProficiency, setSkillProficiency] = useState('Intermediate')
@@ -91,9 +95,6 @@ export default function LearningRoadmapPage() {
   const profile = profileData?.profile
 
   const [selectedRole, setSelectedRole] = useState('')
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'curriculum' | 'quizzes'
-  const [selectedMilestoneFilter, setSelectedMilestoneFilter] = useState('all') // 'all' | number
-
   const { data: analysisData } = useGetSkillAnalysisQuery()
   const { data: learningPathData, isLoading: loadingPath } = useGetLearningPathQuery(selectedRole || undefined)
   const { data: assessmentsData } = useGetMyAssessmentsQuery()
@@ -108,7 +109,7 @@ export default function LearningRoadmapPage() {
   const analysis = analysisData?.analysis
   const learningPath = learningPathData?.learningPath
 
-  // Target career options from profile (up to 3)
+  // Available career options from student profile
   const careerOptions = useMemo(() => {
     const list = []
     if (Array.isArray(profile?.careerInterests)) {
@@ -136,12 +137,13 @@ export default function LearningRoadmapPage() {
 
   const currentRole = selectedRole || careerOptions[0]?.title || learningPath?.targetRole || analysis?.targetRole || 'Software Engineer'
 
+  // Structured milestones array
   const milestones = useMemo(() => {
     if (!learningPath?.milestones) return []
     return Array.isArray(learningPath.milestones) ? learningPath.milestones : JSON.parse(learningPath.milestones || '[]')
   }, [learningPath])
 
-  // Progress stats
+  // Overall progress stats
   const progressStats = useMemo(() => {
     let totalSubtopics = 0
     let completedSubtopics = 0
@@ -162,7 +164,7 @@ export default function LearningRoadmapPage() {
     return { totalSubtopics, completedSubtopics, percent }
   }, [milestones, optimisticOverrides])
 
-  // All topics flat list across milestones
+  // Flat list of topics for easy lookup & gradebook
   const allTopics = useMemo(() => {
     const list = []
     milestones.forEach((m, mIdx) => {
@@ -179,7 +181,7 @@ export default function LearningRoadmapPage() {
     return list
   }, [milestones])
 
-  // Map of student's quiz submissions
+  // Quiz submissions lookup
   const submissionsMap = useMemo(() => {
     const map = {}
     const subs = assessmentsData?.submissions || []
@@ -195,43 +197,7 @@ export default function LearningRoadmapPage() {
     return Object.values(submissionsMap).filter((s) => s.passed).length
   }, [submissionsMap])
 
-  // Per-milestone progress calculation
-  const milestoneProgress = useMemo(() => {
-    return milestones.map((m, idx) => {
-      let total = 0
-      let done = 0
-      ;(m.topics || []).forEach((t) => {
-        ;(t.subtopics || []).forEach((sub) => {
-          total++
-          const isDone = optimisticOverrides[sub.id] !== undefined
-            ? optimisticOverrides[sub.id]
-            : Boolean(sub.isCompleted)
-          if (isDone) done++
-        })
-      })
-      const isComplete = total > 0 && done === total
-      const percent = total > 0 ? Math.round((done / total) * 100) : 0
-      return {
-        milestoneNumber: m.milestoneNumber || idx + 1,
-        title: m.title,
-        weekRange: m.weekRange || `Phase ${idx + 1}`,
-        goal: m.goal,
-        skillsCovered: m.skillsCovered || [],
-        topics: m.topics || [],
-        total,
-        done,
-        percent,
-        isComplete,
-      }
-    })
-  }, [milestones, optimisticOverrides])
-
-  // Active / current milestone in progress
-  const activeMilestone = useMemo(() => {
-    return milestoneProgress.find((mp) => !mp.isComplete) || milestoneProgress[0]
-  }, [milestoneProgress])
-
-  // Filtered milestones based on selected pill
+  // Filtered milestones based on phase pill
   const filteredMilestones = useMemo(() => {
     if (selectedMilestoneFilter === 'all') return milestones
     return milestones.filter((m, idx) => (m.milestoneNumber || idx + 1) === selectedMilestoneFilter)
@@ -249,7 +215,7 @@ export default function LearningRoadmapPage() {
         analysisId: analysis?.id,
         targetRole: currentRole,
       }).unwrap()
-      showToast('AI Learning Roadmap regenerated successfully!')
+      showToast('Learning roadmap updated successfully!')
     } catch (err) {
       console.error('Failed to regenerate learning path:', err)
     }
@@ -259,13 +225,12 @@ export default function LearningRoadmapPage() {
     if (!learningPath?.id) return
     const nextStatus = !currentStatus
 
-    // 0ms instant optimistic UI feedback
+    // 0ms optimistic UI update
     setOptimisticOverrides((prev) => ({
       ...prev,
       [subtopicId]: nextStatus,
     }))
 
-    // Background network sync
     updateSubtopicStatus({
       pathId: learningPath.id,
       subtopicId,
@@ -281,7 +246,54 @@ export default function LearningRoadmapPage() {
       })
   }
 
-  // Phase 5: Open Learning Content & Resources Modal
+  // Check subtopic completion progress for a topic
+  const getTopicLessonProgress = (topic) => {
+    const subtopics = topic?.subtopics || []
+    if (subtopics.length === 0) return { total: 0, done: 0, isFinished: true, percent: 100 }
+    let done = 0
+    subtopics.forEach((sub) => {
+      const isDone = optimisticOverrides[sub.id] !== undefined
+        ? optimisticOverrides[sub.id]
+        : Boolean(sub.isCompleted)
+      if (isDone) done++
+    })
+    return {
+      total: subtopics.length,
+      done,
+      isFinished: done === subtopics.length,
+      percent: Math.round((done / subtopics.length) * 100),
+    }
+  }
+
+  // Mark all subtopics of a topic complete
+  const handleMarkAllLessonsComplete = async (topic) => {
+    if (!learningPath?.id || !topic) return
+    const subtopics = topic.subtopics || []
+    if (subtopics.length === 0) return
+
+    const nextOverrides = {}
+    subtopics.forEach((sub) => {
+      nextOverrides[sub.id] = true
+    })
+    setOptimisticOverrides((prev) => ({ ...prev, ...nextOverrides }))
+
+    try {
+      await Promise.all(
+        subtopics.map((sub) =>
+          updateSubtopicStatus({
+            pathId: learningPath.id,
+            subtopicId: sub.id,
+            completed: true,
+          }).unwrap()
+        )
+      )
+      showToast(`All lessons for "${topic.title}" finished! Quiz unlocked.`)
+    } catch (err) {
+      console.error('Failed to mark all subtopics complete:', err)
+    }
+  }
+
+  // Open Study Guide Modal
   const handleOpenContent = async (topic) => {
     setActiveContentTopic(topic)
     setContentTab('materials')
@@ -311,61 +323,11 @@ export default function LearningRoadmapPage() {
     }
   }
 
-  // Helper to check if all lessons (subtopics) for a topic are completed
-  const getTopicLessonProgress = (topic) => {
-    const subtopics = topic?.subtopics || []
-    if (subtopics.length === 0) return { total: 0, done: 0, isFinished: true }
-    let done = 0
-    subtopics.forEach((sub) => {
-      const isDone = optimisticOverrides[sub.id] !== undefined
-        ? optimisticOverrides[sub.id]
-        : Boolean(sub.isCompleted)
-      if (isDone) done++
-    })
-    return {
-      total: subtopics.length,
-      done,
-      isFinished: done === subtopics.length,
-    }
-  }
-
-  const isTopicLessonFinished = (topic) => {
-    return getTopicLessonProgress(topic).isFinished
-  }
-
-  // Action to mark all lessons/subtopics of a topic as completed
-  const handleMarkAllLessonsComplete = async (topic) => {
-    if (!learningPath?.id || !topic) return
-    const subtopics = topic.subtopics || []
-    if (subtopics.length === 0) return
-
-    const nextOverrides = {}
-    subtopics.forEach((sub) => {
-      nextOverrides[sub.id] = true
-    })
-    setOptimisticOverrides((prev) => ({ ...prev, ...nextOverrides }))
-
-    try {
-      await Promise.all(
-        subtopics.map((sub) =>
-          updateSubtopicStatus({
-            pathId: learningPath.id,
-            subtopicId: sub.id,
-            completed: true,
-          }).unwrap()
-        )
-      )
-      showToast(`All lessons for "${topic.title}" marked as complete! Quiz is now unlocked. 🎉`)
-    } catch (err) {
-      console.error('Failed to mark all subtopics complete:', err)
-    }
-  }
-
-  // Phase 6: Open Quiz / Assessment Modal (Allowed only when lesson is finished)
+  // Open Quiz Modal
   const handleOpenQuiz = async (topic) => {
     const { isFinished, done, total } = getTopicLessonProgress(topic)
     if (!isFinished) {
-      showToast(`Please complete all lessons for "${topic?.title}" (${done}/${total} finished) before taking the quiz.`)
+      showToast(`Please complete all ${total} lessons for "${topic?.title}" before taking the quiz. (${done}/${total} completed)`)
       return
     }
 
@@ -386,14 +348,13 @@ export default function LearningRoadmapPage() {
         targetRole: currentRole,
       }).unwrap()
 
-      const assessment = res.assessment
-      setQuizData(assessment)
+      setQuizData(res.assessment)
     } catch (err) {
       console.error('Failed to load quiz:', err)
     }
   }
 
-  // Phase 6: Submit Quiz Answers
+  // Submit Quiz
   const handleSubmitQuiz = async () => {
     if (!activeQuizTopic?.id) return
 
@@ -410,7 +371,7 @@ export default function LearningRoadmapPage() {
     }
   }
 
-  // Direct Skill Update Handler
+  // Direct Skill Update Handlers
   const handleOpenSkillUpdate = (skillName, defaultProficiency = 'Intermediate') => {
     setSkillToUpdate(skillName)
     setSkillProficiency(defaultProficiency)
@@ -434,80 +395,45 @@ export default function LearningRoadmapPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl pb-16">
-      {/* Toast Notification Banner */}
+    <div className="space-y-6 max-w-5xl mx-auto pb-20">
+      {/* Toast Alert */}
       {successToast && (
-        <div className="p-3.5 rounded-xl bg-emerald-500 text-white font-medium text-xs flex items-center justify-between shadow-lg shadow-emerald-200 animate-in fade-in slide-in-from-top-2">
+        <div className="p-3.5 rounded-xl bg-slate-900 text-white text-xs font-medium flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successToast}</span>
           </div>
-          <button onClick={() => setSuccessToast('')} className="text-white/80 hover:text-white">
+          <button onClick={() => setSuccessToast('')} className="text-slate-400 hover:text-white px-1">
             &times;
           </button>
         </div>
       )}
 
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+      {/* Modern, Clean Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#4F46E5]">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <h1 className="page-title text-gray-900">AI Learning Roadmap</h1>
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+              Curriculum Path
+            </span>
+            <span className="text-slate-300">&bull;</span>
+            <span className="text-xs font-medium text-slate-500">
+              {learningPath?.totalDurationWeeks || 12} Weeks
+            </span>
           </div>
-          <p className="page-subtitle mt-1">
-            Your step-by-step learning path. Read simple guides, check helpful links, take quick practice quizzes, and check off what you learn.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
+            AI Learning Roadmap
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-xl">
+            Structured step-by-step milestones, verified study guides, and 12-question practice quizzes tailored for your target role.
           </p>
         </div>
 
-        {/* Global CTA Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            onClick={() => navigate('/dashboard/skill-analysis')}
-            variant="outline"
-            className="text-xs font-semibold gap-1.5 border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5]"
-          >
-            <Target className="w-3.5 h-3.5" />
-            Skill Gap Analysis
-          </Button>
-
-          <Button
-            onClick={handleRegeneratePath}
-            disabled={isGeneratingPath}
-            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 shadow-xs cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingPath ? 'animate-spin' : ''}`} />
-            {learningPath ? 'Regenerate Roadmap' : 'Generate Roadmap'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Target Career Selector Bar */}
-      <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-150 flex items-center justify-center text-[#4F46E5] shrink-0">
-            <Target className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Active Career Roadmap
-            </div>
-            <div className="text-sm font-extrabold text-gray-900 mt-0.5">
-              {currentRole}
-            </div>
-          </div>
-        </div>
-
-        {/* Career Selection Dropdown (Up to 3 Chosen Careers) */}
-        <div className="flex items-center gap-2.5">
-          <label htmlFor="career-select-roadmap" className="text-xs font-semibold text-gray-600 shrink-0">
-            Select Career:
-          </label>
-          <div className="min-w-[240px]">
+        {/* Action Controls & Career Selector */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="min-w-[200px]">
             <Select
-              id="career-select-roadmap"
+              id="career-select"
               value={currentRole}
               onChange={(newRole) => setSelectedRole(newRole)}
               disabled={isGeneratingPath}
@@ -518,6 +444,15 @@ export default function LearningRoadmapPage() {
               }))}
             />
           </div>
+
+          <Button
+            onClick={() => navigate('/dashboard/skill-analysis')}
+            variant="outline"
+            className="text-xs font-medium border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-300 gap-1.5 h-9"
+          >
+            <Target className="w-3.5 h-3.5" />
+            Skill Gap
+          </Button>
         </div>
       </div>
 
@@ -525,361 +460,154 @@ export default function LearningRoadmapPage() {
       {loadingPath && (
         <Loading
           variant="ai"
-          message={`Loading your ${currentRole} Learning Roadmap...`}
-          description="Retrieving multi-week milestones, weekly topics, and practical outcomes."
+          message={`Loading your ${currentRole} curriculum...`}
+          description="Retrieving personalized milestones, weekly topics, and practical outcomes."
         />
       )}
 
       {/* Generating Banner */}
       {isGeneratingPath && (
-        <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 text-indigo-900 flex items-center gap-3 animate-pulse">
-          <RefreshCw className="w-4 h-4 text-[#4F46E5] animate-spin" />
-          <div className="text-xs">
-            <span className="font-medium text-indigo-950">Tailoring your learning roadmap...</span> Structuring multi-week milestones, topics, and practical outcomes.
+        <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-indigo-950 flex items-center gap-3 text-xs animate-pulse">
+          <RefreshCw className="w-4 h-4 text-[#4F46E5] animate-spin shrink-0" />
+          <div>
+            <span className="font-semibold">Tailoring your curriculum...</span> Organizing multi-week milestones, study guides, and practice quizzes.
           </div>
         </div>
       )}
 
       {/* Empty State */}
       {!learningPath && !loadingPath && (
-        <div className="p-10 text-center rounded-2xl bg-white border border-gray-200 shadow-xs space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center border border-indigo-100">
-            <BookOpen className="w-7 h-7" />
+        <div className="p-12 text-center rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center border border-indigo-100">
+            <Compass className="w-6 h-6" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-bold text-gray-900">No Learning Roadmap Created Yet</h3>
-            <p className="text-xs text-gray-500">
-              Get a clear week-by-week learning plan with guides, lessons, and practice quizzes for <span className="font-semibold text-gray-800">{currentRole}</span>.
+            <h3 className="text-base font-bold text-slate-900">No Learning Roadmap Created Yet</h3>
+            <p className="text-xs text-slate-500">
+              Generate a custom step-by-step curriculum for <span className="font-semibold text-slate-800">{currentRole}</span> with interactive lessons and practical assessments.
             </p>
           </div>
           <Button
             onClick={handleRegeneratePath}
             disabled={isGeneratingPath}
-            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-5 py-2.5 rounded-xl gap-2 shadow-xs"
+            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-5 py-2.5 rounded-xl gap-2 shadow-xs cursor-pointer"
           >
             <Sparkles className="w-4 h-4" /> Generate AI Learning Roadmap
           </Button>
         </div>
       )}
 
-      {/* Active Roadmap View */}
+      {/* Active Roadmap Container */}
       {learningPath && (
         <div className="space-y-6">
-          {/* THREE CLEAN TABS NAVIGATION */}
-          <div className="flex items-center gap-2 border-b border-gray-200 pb-px">
-            {/* Tab 1: Roadmap Overview */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === 'overview'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <TrendingUp className="w-3.5 h-3.5" />
-              Roadmap Overview
-            </button>
-
-            {/* Tab 2: Step-by-Step Lessons */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('curriculum')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === 'curriculum'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              Step-by-Step Lessons
-              <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px] ml-1 font-bold">
-                {progressStats.completedSubtopics} / {progressStats.totalSubtopics}
-              </Badge>
-            </button>
-
-            {/* Tab 3: Practice Quizzes */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('quizzes')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === 'quizzes'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              Practice Quizzes
-              <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[10px] ml-1 font-bold">
-                {quizzesPassedCount} / {allTopics.length} Passed
-              </Badge>
-            </button>
-          </div>
-
-          {/* ======================================================= */}
-          {/* TAB 1: ROADMAP OVERVIEW (DASHBOARD STYLE)               */}
-          {/* ======================================================= */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* 4 Clean Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Overall Progress */}
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                      Overall Progress
-                    </span>
-                    <div className="text-2xl font-black text-gray-900">
-                      {progressStats.percent}%
-                    </div>
-                    <p className="text-[11px] text-gray-500">
-                      {progressStats.completedSubtopics} of {progressStats.totalSubtopics} lessons
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#4F46E5] shrink-0">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                </div>
-
-                {/* 2. Completed Lessons */}
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                      Lessons Finished
-                    </span>
-                    <div className="text-2xl font-black text-emerald-600">
-                      {progressStats.completedSubtopics}
-                    </div>
-                    <p className="text-[11px] text-gray-500">
-                      {progressStats.totalSubtopics - progressStats.completedSubtopics} remaining to finish
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                </div>
-
-                {/* 3. Learning Phases */}
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                      Learning Phases
-                    </span>
-                    <div className="text-2xl font-black text-gray-900">
-                      {milestones.length}
-                    </div>
-                    <p className="text-[11px] text-gray-500">
-                      {learningPath.totalDurationWeeks || 12} weeks total plan
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                    <Layers className="w-5 h-5" />
-                  </div>
-                </div>
-
-                {/* 4. Quizzes Passed */}
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                      Quizzes Passed
-                    </span>
-                    <div className="text-2xl font-black text-purple-600">
-                      {quizzesPassedCount} / {allTopics.length}
-                    </div>
-                    <p className="text-[11px] text-gray-500">
-                      {allTopics.length - quizzesPassedCount} quizzes remaining
-                    </p>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-                    <Award className="w-5 h-5" />
-                  </div>
+          {/* Unified Compact Progress Strip (Single clean card, zero repetition) */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+              <div>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Target Role
+                </span>
+                <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  {currentRole}
+                  <Badge className="bg-indigo-50 text-[#4F46E5] border-0 text-[10px] font-semibold">
+                    {milestones.length} Phases
+                  </Badge>
                 </div>
               </div>
 
-              {/* Course Progress Hero Card */}
-              <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px] font-bold">
-                        {learningPath.targetRole}
-                      </Badge>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        {learningPath.totalDurationWeeks || 12} Weeks Structured Learning Plan
-                      </span>
-                    </div>
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                      {learningPath.title}
-                    </h2>
-                    <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
-                      {learningPath.description}
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={() => {
-                      setSelectedMilestoneFilter(activeMilestone?.milestoneNumber || 'all')
-                      setActiveTab('curriculum')
-                    }}
-                    className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-4 py-2 rounded-xl gap-2 shadow-xs shrink-0 cursor-pointer self-start md:self-center"
-                  >
-                    Continue Lessons <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-700">Course Completion</span>
-                    <span className="font-bold text-[#4F46E5]">{progressStats.percent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-[#4F46E5] h-full rounded-full transition-all duration-300"
-                      style={{ width: `${progressStats.percent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Visual Learning Journey Cards (Milestones 1 to 4) */}
-              <div className="space-y-3">
+              <div className="flex items-center gap-6 text-xs text-slate-600">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Your Learning Journey</h3>
-                  <p className="text-xs text-gray-500">
-                    Step through each phase to build strong skills and get ready for your career.
-                  </p>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Lessons</span>
+                  <span className="font-bold text-slate-900">
+                    {progressStats.completedSubtopics} / {progressStats.totalSubtopics}
+                  </span>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {milestoneProgress.map((mp) => (
-                    <div
-                      key={mp.milestoneNumber}
-                      className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs flex flex-col justify-between space-y-4 hover:border-indigo-200 transition-all"
-                    >
-                      <div className="space-y-2.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-[#4F46E5] font-extrabold text-xs flex items-center justify-center shrink-0">
-                              M{mp.milestoneNumber}
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-bold text-[#4F46E5] uppercase tracking-wider block">
-                                {mp.weekRange}
-                              </span>
-                              <h4 className="text-xs font-bold text-gray-900 leading-snug">
-                                {mp.title}
-                              </h4>
-                            </div>
-                          </div>
-
-                          {mp.isComplete ? (
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold shrink-0">
-                              Completed
-                            </Badge>
-                          ) : mp.done > 0 ? (
-                            <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px] font-bold shrink-0">
-                              In Progress
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-600 border-0 text-[10px] shrink-0">
-                              Up Next
-                            </Badge>
-                          )}
-                        </div>
-
-                        {mp.goal && (
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            <span className="font-semibold text-gray-800">Goal: </span>
-                            {mp.goal}
-                          </p>
-                        )}
-
-                        {/* Skills Covered Chips */}
-                        {mp.skillsCovered && mp.skillsCovered.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1 pt-1">
-                            {mp.skillsCovered.map((sk, sIdx) => (
-                              <span
-                                key={sIdx}
-                                className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-700 border border-slate-200"
-                              >
-                                {sk}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 pt-3 border-t border-gray-100">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-gray-500">
-                            {mp.done} of {mp.total} lessons done
-                          </span>
-                          <span className="font-bold text-gray-800">{mp.percent}%</span>
-                        </div>
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              mp.isComplete ? 'bg-emerald-500' : 'bg-[#4F46E5]'
-                            }`}
-                            style={{ width: `${mp.percent}%` }}
-                          />
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedMilestoneFilter(mp.milestoneNumber)
-                            setActiveTab('curriculum')
-                          }}
-                          className="w-full text-xs font-semibold text-[#4F46E5] hover:bg-indigo-50 h-8 gap-1.5 mt-1 cursor-pointer"
-                        >
-                          View Phase Lessons <ArrowRight className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Quizzes</span>
+                  <span className="font-bold text-emerald-600">
+                    {quizzesPassedCount} / {allTopics.length} Passed
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Overall</span>
+                  <span className="font-bold text-[#4F46E5]">{progressStats.percent}%</span>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* ======================================================= */}
-          {/* TAB 2: STEP-BY-STEP LESSONS (WITH PHASE FILTER PILLS)    */}
-          {/* ======================================================= */}
-          {activeTab === 'curriculum' && (
-            <div className="space-y-5">
-              {/* Phase Filter Bar */}
-              <div className="p-3.5 rounded-xl bg-white border border-gray-200 shadow-xs flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-gray-500 mr-2 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-gray-400" />
-                  Filter by Phase:
+            {/* Clean Progress Bar */}
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-[#4F46E5] h-full rounded-full transition-all duration-300"
+                style={{ width: `${progressStats.percent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Clean 2-Tab Navigation (Curriculum vs Quiz Mastery Record) */}
+          <div className="flex items-center justify-between border-b border-slate-200 pb-px">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveView('roadmap')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                  activeView === 'roadmap'
+                    ? 'border-[#4F46E5] text-[#4F46E5]'
+                    : 'border-transparent text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                Curriculum & Lessons
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-normal">
+                  {allTopics.length} Topics
                 </span>
+              </button>
 
+              <button
+                type="button"
+                onClick={() => setActiveView('assessments')}
+                className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                  activeView === 'assessments'
+                    ? 'border-[#4F46E5] text-[#4F46E5]'
+                    : 'border-transparent text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5" />
+                Practice Quizzes & Mastery
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-medium ${
+                  quizzesPassedCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {quizzesPassedCount} Passed
+                </span>
+              </button>
+            </div>
+
+            {/* Quick Phase Filter Pills (Visible when in Curriculum view) */}
+            {activeView === 'roadmap' && milestones.length > 1 && (
+              <div className="hidden sm:flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setSelectedMilestoneFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                     selectedMilestoneFilter === 'all'
-                      ? 'bg-[#4F46E5] text-white shadow-2xs'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-slate-900 text-white'
+                      : 'text-slate-500 hover:bg-slate-100'
                   }`}
                 >
-                  All Phases ({milestones.length})
+                  All
                 </button>
-
-                {milestones.map((m, mIdx) => {
-                  const mNum = m.milestoneNumber || mIdx + 1
+                {milestones.map((m, idx) => {
+                  const mNum = m.milestoneNumber || idx + 1
                   const isSelected = selectedMilestoneFilter === mNum
                   return (
                     <button
                       key={mNum}
                       type="button"
                       onClick={() => setSelectedMilestoneFilter(mNum)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                         isSelected
-                          ? 'bg-[#4F46E5] text-white shadow-2xs'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-500 hover:bg-slate-100'
                       }`}
                     >
                       Phase {mNum}
@@ -887,407 +615,366 @@ export default function LearningRoadmapPage() {
                   )
                 })}
               </div>
+            )}
+          </div>
 
-              {/* Milestone Cards */}
-              <div className="space-y-5">
-                {filteredMilestones.map((m, mIdx) => (
+          {/* ======================================================= */}
+          {/* VIEW 1: UNIFIED CURRICULUM ROADMAP                      */}
+          {/* ======================================================= */}
+          {activeView === 'roadmap' && (
+            <div className="space-y-4">
+              {filteredMilestones.map((m, mIdx) => {
+                const mNum = m.milestoneNumber || mIdx + 1
+                const isMilestoneCollapsed = Boolean(collapsedMilestones[mNum])
+
+                // Calculate progress for this milestone
+                let mTotal = 0
+                let mDone = 0
+                ;(m.topics || []).forEach((t) => {
+                  ;(t.subtopics || []).forEach((sub) => {
+                    mTotal++
+                    const done = optimisticOverrides[sub.id] !== undefined
+                      ? optimisticOverrides[sub.id]
+                      : Boolean(sub.isCompleted)
+                    if (done) mDone++
+                  })
+                })
+                const mPercent = mTotal > 0 ? Math.round((mDone / mTotal) * 100) : 0
+                const mComplete = mTotal > 0 && mDone === mTotal
+
+                return (
                   <div
-                    key={m.milestoneNumber || mIdx}
-                    className="rounded-2xl bg-white border border-gray-200 shadow-xs overflow-hidden"
+                    key={mNum}
+                    className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden"
                   >
-                    {/* Milestone Header */}
-                    <div className="p-5 bg-gradient-to-r from-slate-50 via-indigo-50/20 to-white border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-start sm:items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
-                          M{m.milestoneNumber || mIdx + 1}
-                        </div>
+                    {/* Phase Header */}
+                    <div
+                      onClick={() => setCollapsedMilestones((prev) => ({ ...prev, [mNum]: !isMilestoneCollapsed }))}
+                      className="p-4 sm:px-5 sm:py-3.5 bg-slate-50/70 hover:bg-slate-50 border-b border-slate-200/80 flex items-center justify-between cursor-pointer select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100/80 px-2 py-0.5 rounded-md shrink-0">
+                          Phase {mNum}
+                        </span>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold text-[#4F46E5] uppercase tracking-wider">
-                              {m.weekRange || `Phase ${mIdx + 1}`}
-                            </span>
-                            <span className="text-gray-300">&bull;</span>
-                            <h3 className="text-sm font-bold text-gray-900">{m.title}</h3>
+                            <h3 className="text-xs font-bold text-slate-900">{m.title}</h3>
+                            <span className="text-slate-400 text-[11px] hidden sm:inline">&bull; {m.weekRange || 'Milestone'}</span>
                           </div>
                           {m.goal && (
-                            <p className="text-xs text-gray-600 mt-0.5 leading-snug">
-                              Goal: <span className="font-medium text-gray-800">{m.goal}</span>
+                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                              {m.goal}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      {/* Skills covered chips */}
-                      {m.skillsCovered && m.skillsCovered.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                          {m.skillsCovered.map((sk, sIdx) => (
-                            <Badge
-                              key={sIdx}
-                              className="bg-white text-gray-700 border-gray-200 text-[10px] font-medium"
-                            >
-                              {sk}
-                            </Badge>
-                          ))}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right hidden sm:block">
+                          <span className="text-[11px] font-semibold text-slate-700">{mDone}/{mTotal} lessons</span>
+                          <span className="text-slate-400 text-[10px] ml-1">({mPercent}%)</span>
                         </div>
-                      )}
+                        {mComplete && (
+                          <Badge className="bg-emerald-50 text-emerald-700 border-0 text-[10px] font-semibold hidden sm:inline-flex">
+                            Completed
+                          </Badge>
+                        )}
+                        <button type="button" className="text-slate-400 hover:text-slate-600">
+                          {isMilestoneCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Topics List within Milestone */}
-                    <div className="p-5 space-y-4">
-                      {(m.topics || []).map((topic, tIdx) => {
-                        const topicKey = topic.id || `m${m.milestoneNumber || mIdx + 1}-t${tIdx}`
-                        const isExpanded = expandedTopics[topicKey] !== false // Default open
+                    {/* Topics List within Phase */}
+                    {!isMilestoneCollapsed && (
+                      <div className="divide-y divide-slate-100">
+                        {(m.topics || []).map((topic, tIdx) => {
+                          const topicKey = topic.id || `m${mNum}-t${tIdx}`
+                          const isTopicExpanded = expandedTopics[topicKey] !== false // Default expanded for ease of reading
+                          const { isFinished, done, total } = getTopicLessonProgress(topic)
+                          const quizSubmission = submissionsMap[topic.id]
+                          const hasPassedQuiz = Boolean(quizSubmission?.passed)
 
-                        return (
-                          <div
-                            key={topicKey}
-                            className="rounded-xl border border-gray-200 overflow-hidden bg-slate-50/40"
-                          >
-                            {/* Topic Row Header */}
-                            <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-b border-gray-200">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Badge className="bg-slate-100 text-slate-700 border-0 text-[10px]">
-                                    {topic.skillCategory || 'Core Skill'}
-                                  </Badge>
-                                  <Badge className="bg-indigo-50 text-[#4F46E5] border-0 text-[10px]">
-                                    {topic.difficulty || 'Intermediate'}
-                                  </Badge>
-                                  {topic.estimatedHours && (
-                                    <span className="text-[11px] text-gray-500">
-                                      &bull; ~{topic.estimatedHours} hrs
-                                    </span>
-                                  )}
+                          return (
+                            <div key={topicKey} className="transition-colors hover:bg-slate-50/30">
+                              {/* Topic Summary Bar */}
+                              <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  {/* Status indicator icon */}
+                                  <div className="mt-0.5 shrink-0">
+                                    {hasPassedQuiz ? (
+                                      <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center" title="Topic mastered & quiz passed">
+                                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                      </div>
+                                    ) : isFinished ? (
+                                      <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center" title="Lessons finished, quiz ready">
+                                        <Award className="w-3 h-3" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-[10px]">
+                                        {tIdx + 1}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="text-xs font-bold text-slate-900">{topic.title}</h4>
+                                      <Badge className="bg-slate-100 text-slate-600 border-0 text-[9px] font-medium">
+                                        {topic.skillCategory || 'Core'}
+                                      </Badge>
+                                      {hasPassedQuiz && (
+                                        <Badge className="bg-emerald-50 text-emerald-700 border-0 text-[9px] font-semibold">
+                                          Passed ({quizSubmission.score}%)
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Lessons count & estimated hours */}
+                                    <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                      <span>{done} of {total} lessons checked</span>
+                                      {topic.estimatedHours && (
+                                        <>
+                                          <span>&bull;</span>
+                                          <span>~{topic.estimatedHours} hrs</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                                <h4 className="text-sm font-bold text-gray-900">
-                                  {topic.title}
-                                </h4>
-                              </div>
 
-                              {/* Action Buttons for this Topic */}
-                              <div className="flex items-center gap-2 shrink-0">
-                                {/* Topic Study Guide & Code Examples */}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleOpenContent(topic)}
-                                  className="h-7 text-[11px] px-2.5 font-semibold text-gray-700 hover:text-[#4F46E5] hover:border-indigo-300 gap-1 cursor-pointer"
-                                >
-                                  <BookOpen className="w-3 h-3" /> Learn & Resources
-                                </Button>
+                                {/* Direct Actions (No Repetition, Clean Hierarchy) */}
+                                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                  {/* Action 1: Study Guide & Resources */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenContent(topic)}
+                                    className="h-8 text-xs font-medium border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-300 gap-1.5 cursor-pointer"
+                                  >
+                                    <BookOpen className="w-3.5 h-3.5" /> Study Guide
+                                  </Button>
 
-                                {/* Topic Quiz (Unlocked only once lesson is finished) */}
-                                {(() => {
-                                  const { isFinished, done, total } = getTopicLessonProgress(topic)
-                                  if (isFinished) {
-                                    return (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleOpenQuiz(topic)}
-                                        className="h-7 text-[11px] px-2.5 font-semibold bg-[#4F46E5] hover:bg-[#4338CA] text-white gap-1 shadow-xs cursor-pointer"
-                                      >
-                                        <HelpCircle className="w-3 h-3" /> Take Quiz
-                                      </Button>
-                                    )
-                                  }
-                                  return (
+                                  {/* Action 2: Practice Quiz (Unlocked once lessons are done) */}
+                                  {isFinished ? (
                                     <Button
                                       size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setExpandedTopics((prev) => ({ ...prev, [topicKey]: true }))
-                                        showToast(`Complete all lessons (${done}/${total} finished) below to unlock the practice quiz.`)
-                                      }}
-                                      title={`Finish all lessons (${done}/${total} completed) to unlock this quiz`}
-                                      className="h-7 text-[11px] px-2.5 font-semibold text-gray-500 border-gray-200 bg-gray-50 hover:bg-gray-100 hover:text-gray-700 gap-1 cursor-pointer"
-                                    >
-                                      <Lock className="w-3 h-3 text-gray-400" /> Quiz Locked ({done}/{total})
-                                    </Button>
-                                  )
-                                })()}
-
-                                {/* Direct Skill Update */}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleOpenSkillUpdate(topic.title.split(' ')[0] || topic.skillCategory || 'Skill')}
-                                  title="I learned this skill - update my profile"
-                                  className="h-7 text-[11px] px-2 text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 gap-1 cursor-pointer"
-                                >
-                                  <PlusCircle className="w-3 h-3" /> Update Skill
-                                </Button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedTopics((prev) => ({ ...prev, [topicKey]: !isExpanded }))}
-                                  className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer"
-                                >
-                                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Subtopics List */}
-                            {isExpanded && (
-                              <div className="p-4 space-y-3 bg-white">
-                                {(topic.subtopics || []).map((sub, sIdx) => {
-                                  const subKey = sub.id || `${topicKey}-sub-${sIdx}`
-                                  const isDone = optimisticOverrides[sub.id] !== undefined
-                                    ? optimisticOverrides[sub.id]
-                                    : Boolean(sub.isCompleted)
-
-                                  return (
-                                    <div
-                                      key={subKey}
-                                      onClick={() => toggleSubtopic(sub.id, isDone)}
-                                      className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none group shadow-2xs ${
-                                        isDone
-                                          ? 'bg-emerald-50/40 border-emerald-300 hover:bg-emerald-50/60'
-                                          : 'bg-white border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/10'
+                                      onClick={() => handleOpenQuiz(topic)}
+                                      className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs ${
+                                        hasPassedQuiz
+                                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                          : 'bg-[#4F46E5] hover:bg-[#4338CA] text-white'
                                       }`}
                                     >
-                                      <div className="flex items-start gap-3.5">
+                                      <HelpCircle className="w-3.5 h-3.5" />
+                                      {hasPassedQuiz ? 'Retake Quiz' : 'Take Quiz (12 Qs)'}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled
+                                      title={`Finish all ${total} lessons to unlock this quiz`}
+                                      className="h-8 text-[11px] font-normal text-slate-400 gap-1 cursor-not-allowed bg-slate-50"
+                                    >
+                                      <Lock className="w-3 h-3 text-slate-300" />
+                                      Quiz Locked ({done}/{total})
+                                    </Button>
+                                  )}
+
+                                  {/* Toggle lessons view */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedTopics((prev) => ({ ...prev, [topicKey]: !isTopicExpanded }))}
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer ml-1"
+                                    title={isTopicExpanded ? 'Collapse lessons' : 'Expand lessons'}
+                                  >
+                                    {isTopicExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Interactive Subtopics Checklist (When expanded) */}
+                              {isTopicExpanded && (
+                                <div className="px-5 pb-4 pt-1 space-y-1.5">
+                                  {(topic.subtopics || []).map((sub, sIdx) => {
+                                    const subKey = sub.id || `${topicKey}-sub-${sIdx}`
+                                    const isDone = optimisticOverrides[sub.id] !== undefined
+                                      ? optimisticOverrides[sub.id]
+                                      : Boolean(sub.isCompleted)
+
+                                    return (
+                                      <div
+                                        key={subKey}
+                                        onClick={() => toggleSubtopic(sub.id, isDone)}
+                                        className={`p-2.5 sm:px-3 sm:py-2 rounded-xl transition-all cursor-pointer select-none flex items-start gap-3 group ${
+                                          isDone
+                                            ? 'bg-slate-50/80 hover:bg-slate-100/80'
+                                            : 'hover:bg-indigo-50/30'
+                                        }`}
+                                      >
+                                        {/* Minimal rounded checkbox */}
                                         <button
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             toggleSubtopic(sub.id, isDone)
                                           }}
-                                          className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center transition-all shrink-0 cursor-pointer shadow-xs ${
+                                          className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
                                             isDone
-                                              ? 'bg-emerald-600 text-white ring-2 ring-emerald-300/60 ring-offset-1'
-                                              : 'border-2 border-gray-300 hover:border-indigo-500 hover:scale-105 active:scale-95 bg-white text-transparent group-hover:border-indigo-400'
+                                              ? 'bg-emerald-600 text-white'
+                                              : 'border border-slate-300 group-hover:border-indigo-500 bg-white'
                                           }`}
-                                          title={isDone ? 'Click to mark as incomplete' : 'Click to mark as complete'}
                                         >
-                                          <Check className={`w-3.5 h-3.5 stroke-[3] transition-transform ${isDone ? 'scale-100 text-white' : 'scale-0'}`} />
+                                          <Check className={`w-3 h-3 stroke-[3] ${isDone ? 'block' : 'hidden'}`} />
                                         </button>
 
-                                        <div className="space-y-1.5 flex-1 min-w-0">
-                                          <div className="flex items-center justify-between">
-                                            <h5
-                                              className={`text-xs font-bold transition-all cursor-pointer ${
-                                                isDone ? 'text-emerald-900 group-hover:text-emerald-950' : 'text-gray-900 group-hover:text-indigo-600'
-                                              }`}
-                                            >
+                                        {/* Subtopic description */}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className={`text-xs font-medium transition-colors ${
+                                              isDone ? 'line-through text-slate-400' : 'text-slate-800 group-hover:text-indigo-600'
+                                            }`}>
                                               {sub.title}
-                                            </h5>
-                                            {isDone ? (
-                                              <Badge className="bg-emerald-100 text-emerald-800 border-0 text-[9px] font-bold shrink-0">
-                                                Completed
-                                              </Badge>
-                                            ) : (
-                                              <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Click to complete
+                                            </span>
+                                            {isDone && (
+                                              <span className="text-[10px] text-emerald-600 font-medium shrink-0">
+                                                Done
                                               </span>
                                             )}
                                           </div>
-
-                                          <p className="text-xs text-gray-600 leading-snug">
-                                            {sub.description}
-                                          </p>
-
-                                          {/* Key concepts chips */}
-                                          {sub.keyConcepts && sub.keyConcepts.length > 0 && (
-                                            <div className="flex flex-wrap items-center gap-1 pt-1">
-                                              <span className="text-[10px] text-gray-400 font-semibold mr-1">
-                                                Key Topics:
-                                              </span>
-                                              {sub.keyConcepts.map((kc, kIdx) => (
-                                                <span
-                                                  key={kIdx}
-                                                  className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
-                                                >
-                                                  {kc}
-                                                </span>
-                                              ))}
-                                            </div>
-                                          )}
-
-                                          {/* Practical Outcome */}
-                                          {sub.practicalOutcome && (
-                                            <div className="mt-1.5 p-2 rounded-lg bg-indigo-50/50 border border-indigo-100 text-[11px] text-indigo-950 flex items-start gap-1.5">
-                                              <Lightbulb className="w-3.5 h-3.5 text-[#4F46E5] shrink-0 mt-0.5" />
-                                              <div>
-                                                <span className="font-bold text-[#4F46E5]">What you will build: </span>
-                                                {sub.practicalOutcome}
-                                              </div>
-                                            </div>
+                                          {sub.description && (
+                                            <p className="text-[11px] text-slate-500 leading-snug line-clamp-1 mt-0.5">
+                                              {sub.description}
+                                            </p>
                                           )}
                                         </div>
                                       </div>
+                                    )
+                                  })}
+
+                                  {/* Mark all complete shortcut if not all done */}
+                                  {!isFinished && (topic.subtopics || []).length > 1 && (
+                                    <div className="pt-1 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMarkAllLessonsComplete(topic)}
+                                        className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                                      >
+                                        Mark all {total} lessons as complete & unlock quiz &rarr;
+                                      </button>
                                     </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           )}
 
           {/* ======================================================= */}
-          {/* TAB 3: PRACTICE QUIZZES (DEDICATED TESTING HUB)         */}
+          {/* VIEW 2: QUIZ MASTERY & SKILL SUMMARY (GRADEBOOK)        */}
           {/* ======================================================= */}
-          {activeTab === 'quizzes' && (
-            <div className="space-y-5">
-              {/* Quizzes Header Card */}
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-[#4F46E5] uppercase tracking-wider">
-                      Knowledge Check
-                    </span>
-                    <span className="text-gray-300">&bull;</span>
-                    <span className="text-xs text-gray-500">
-                      {quizzesPassedCount} of {allTopics.length} Quizzes Passed
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Practice Quizzes for {currentRole}
-                  </h3>
-                  <p className="text-xs text-gray-500 max-w-xl">
-                    Take short practice quizzes for each topic to test what you have learned and solidify your understanding.
-                  </p>
-                </div>
-
-                <div className="shrink-0">
-                  <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs px-3 py-1 font-bold">
-                    {quizzesPassedCount} / {allTopics.length} Passed
-                  </Badge>
-                </div>
+          {activeView === 'assessments' && (
+            <div className="space-y-4">
+              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">Quiz History & Verified Skills</h3>
+                <p className="text-xs text-slate-500">
+                  Track your practice quiz scores across every topic. Passing with 70% or higher lets you confirm the skill directly to your student profile.
+                </p>
               </div>
 
-              {/* Quizzes Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {allTopics.map((topic) => {
-                  const sub = submissionsMap[topic.id]
-                  const hasTaken = Boolean(sub)
-                  const passed = Boolean(sub?.passed)
+              {/* Clean Table of Topics and Quiz Status */}
+              <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
+                <div className="divide-y divide-slate-100">
+                  {allTopics.map((topic) => {
+                    const sub = submissionsMap[topic.id]
+                    const hasTaken = Boolean(sub)
+                    const passed = Boolean(sub?.passed)
+                    const { isFinished, done, total } = getTopicLessonProgress(topic)
 
-                  return (
-                    <div
-                      key={topic.topicKey}
-                      className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs flex flex-col justify-between space-y-4 hover:border-indigo-200 transition-all"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#4F46E5]">
-                            Phase {topic.milestoneNumber} &bull; {topic.milestoneWeekRange || 'Milestone'}
-                          </span>
-
-                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            {(() => {
-                              const { isFinished, done, total } = getTopicLessonProgress(topic)
-                              if (!isFinished) {
-                                return (
-                                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-semibold flex items-center gap-1">
-                                    <Lock className="w-2.5 h-2.5" /> Lessons: {done}/{total}
-                                  </Badge>
-                                )
-                              }
-                              return (
-                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold flex items-center gap-1">
-                                  <Check className="w-2.5 h-2.5" /> Lessons Finished
-                                </Badge>
-                              )
-                            })()}
-
-                            {hasTaken ? (
-                              passed ? (
-                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3" /> Passed ({sub.score}%)
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3" /> Score: {sub.score}% (Try again)
-                                </Badge>
-                              )
-                            ) : (
-                              <Badge className="bg-gray-100 text-gray-600 border-0 text-[10px] shrink-0">
-                                Not taken yet
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        <h4 className="text-xs font-bold text-gray-900 leading-snug">
-                          {topic.title}
-                        </h4>
-
-                        <div className="flex items-center gap-2 pt-0.5">
-                          <Badge className="bg-slate-100 text-slate-700 border-0 text-[10px]">
-                            {topic.skillCategory || 'Core Skill'}
-                          </Badge>
-                          <Badge className="bg-indigo-50 text-[#4F46E5] border-0 text-[10px]">
-                            {topic.difficulty || 'Intermediate'}
-                          </Badge>
-                          {topic.estimatedHours && (
-                            <span className="text-[10px] text-gray-400">
-                              ~{topic.estimatedHours} hrs study
+                    return (
+                      <div
+                        key={topic.topicKey}
+                        className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 transition-colors"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-indigo-600 uppercase">
+                              Phase {topic.milestoneNumber}
                             </span>
-                          )}
+                            <span className="text-slate-300">&bull;</span>
+                            <h4 className="text-xs font-bold text-slate-900">{topic.title}</h4>
+                            <Badge className="bg-slate-100 text-slate-600 border-0 text-[9px]">
+                              {topic.skillCategory}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Lessons status: {done}/{total} completed {isFinished ? '(Quiz unlocked)' : '(Finish lessons to take quiz)'}
+                          </p>
                         </div>
-                      </div>
 
-                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenContent(topic)}
-                          className="h-8 text-xs text-gray-600 hover:text-[#4F46E5] hover:bg-indigo-50 gap-1.5 cursor-pointer"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" /> Review Lessons
-                        </Button>
-
-                        {(() => {
-                          const { isFinished, done, total } = getTopicLessonProgress(topic)
-
-                          if (!isFinished) {
-                            return (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedMilestoneFilter(topic.milestoneNumber)
-                                  setExpandedTopics((prev) => ({ ...prev, [topic.topicKey]: true }))
-                                  setActiveTab('curriculum')
-                                  showToast(`Complete all lessons for "${topic.title}" (${done}/${total} finished) to unlock this quiz.`)
-                                }}
-                                title={`Complete all lessons (${done}/${total}) to unlock this quiz`}
-                                className="h-8 text-xs font-semibold gap-1.5 cursor-pointer border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100"
-                              >
-                                <Lock className="w-3.5 h-3.5 text-amber-600" />
-                                Finish Lessons ({done}/{total})
-                              </Button>
+                        {/* Quiz Status Badge & Direct Trigger */}
+                        <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+                          {hasTaken ? (
+                            passed ? (
+                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold px-2.5 py-0.5">
+                                Passed ({sub.score}%)
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-semibold px-2.5 py-0.5">
+                                Score: {sub.score}% (Try again)
+                              </Badge>
                             )
-                          }
+                          ) : (
+                            <span className="text-[11px] text-slate-400">Not taken yet</span>
+                          )}
 
-                          return (
+                          {isFinished ? (
                             <Button
                               size="sm"
                               onClick={() => handleOpenQuiz(topic)}
-                              variant={passed ? 'outline' : 'default'}
-                              className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs ${
+                              className={`h-7 text-xs font-medium cursor-pointer ${
                                 passed
-                                  ? 'border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5]'
+                                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                   : 'bg-[#4F46E5] hover:bg-[#4338CA] text-white'
                               }`}
                             >
-                              <HelpCircle className="w-3.5 h-3.5" />
-                              {hasTaken ? (passed ? 'Retake Quiz' : 'Try Again') : 'Take Quiz'}
+                              {hasTaken ? (passed ? 'Retake' : 'Try Again') : 'Take Quiz'}
                             </Button>
-                          )
-                        })()}
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled
+                              className="h-7 text-[11px] text-slate-400 bg-slate-50 cursor-not-allowed"
+                            >
+                              <Lock className="w-3 h-3 text-slate-300 mr-1" /> Locked
+                            </Button>
+                          )}
+
+                          {passed && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenSkillUpdate(topic.title.split(' ')[0] || topic.skillCategory || 'Skill')}
+                              title="Update your student profile skill level"
+                              className="h-7 text-xs text-emerald-700 hover:bg-emerald-50 gap-1 cursor-pointer"
+                            >
+                              <PlusCircle className="w-3 h-3" /> Update Skill
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -1295,106 +982,100 @@ export default function LearningRoadmapPage() {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 1: PHASE 5 LEARNING MATERIALS & RESOURCES (DIALOG) */}
+      {/* MODAL 1: STUDY GUIDE & RESOURCES (DISTRACTION-FREE)      */}
       {/* ======================================================== */}
       <Dialog open={contentModalOpen} onOpenChange={setContentModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto p-6">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto p-6 sm:p-7 rounded-2xl bg-white">
+          <DialogHeader className="space-y-1 pb-1">
             <div className="flex items-center gap-2">
-              <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px]">
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-wider">
                 {activeContentTopic?.skillCategory || 'Core Skill'}
-              </Badge>
-              <Badge className="bg-slate-100 text-slate-700 border-0 text-[10px]">
+              </span>
+              <span className="text-slate-300">&bull;</span>
+              <span className="text-xs font-medium text-slate-500">
                 {activeContentTopic?.difficulty || 'Intermediate'}
-              </Badge>
+              </span>
+              {activeContentTopic?.estimatedHours && (
+                <>
+                  <span className="text-slate-300">&bull;</span>
+                  <span className="text-xs text-slate-500">~{activeContentTopic.estimatedHours} hrs study</span>
+                </>
+              )}
             </div>
-            <DialogTitle className="text-base font-bold text-gray-900 pt-1">
+            <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
               {activeContentTopic?.title}
             </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Lesson guides, real code examples, and helpful links to learn this topic.
+            <DialogDescription className="text-xs text-slate-500">
+              In-depth technical walkthrough, production code implementation, and verified direct learning resources.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Tab Selector Inside Modal */}
-          <div className="flex items-center gap-2 border-b border-gray-200 mt-2">
+          {/* Clean Segmented Pill Switcher */}
+          <div className="inline-flex p-1 rounded-xl bg-slate-100/80 border border-slate-200/60 mt-1 select-none">
             <button
+              type="button"
               onClick={() => setContentTab('materials')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
                 contentTab === 'materials'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-900 font-medium'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" /> Learning Guide & Notes
+              <FileText className="w-3.5 h-3.5" /> Study Guide & Code
             </button>
             <button
+              type="button"
               onClick={() => setContentTab('resources')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
                 contentTab === 'resources'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-900 font-medium'
               }`}
             >
-              <Bookmark className="w-3.5 h-3.5" /> Helpful Web Resources ({topicContent?.resources?.length || 0})
+              <Bookmark className="w-3.5 h-3.5" /> Curated Resources ({topicContent?.resources?.length || 4})
             </button>
           </div>
 
-          {/* Loading indicator */}
+          {/* Loading state */}
           {isLoadingContent && !topicContent && (
             <Loading
               variant="card"
-              message="Preparing your study materials..."
-              description="Writing clear lesson guides, code examples, and helpful resources."
+              message="Loading study guide..."
+              description="Retrieving technical walkthrough, production code snippets, and verified links."
             />
           )}
 
-          {/* Modal Tab 1: Detailed Learning Materials */}
+          {/* Tab 1: Study Guide & Code */}
           {topicContent && contentTab === 'materials' && (
-            <div className="space-y-5 pt-2">
+            <div className="space-y-4 pt-2">
               {topicContent.overview && (
-                <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs text-gray-700 leading-relaxed">
-                  <span className="font-bold text-[#4F46E5]">Topic Overview: </span>
+                <div className="p-3.5 rounded-xl bg-slate-50/80 border-l-2 border-[#4F46E5] text-xs text-slate-700 leading-relaxed font-normal">
+                  <span className="font-semibold text-slate-900">Module Overview: </span>
                   {topicContent.overview}
                 </div>
               )}
 
-              {topicContent.keyConcepts?.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> Key Concepts Breakdown
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {topicContent.keyConcepts.map((kc, idx) => (
-                      <div key={idx} className="p-3 rounded-lg border border-gray-200 bg-white text-xs space-y-1">
-                        <div className="font-bold text-gray-900">{kc.concept || kc.title || `Concept ${idx + 1}`}</div>
-                        <p className="text-gray-600 leading-snug">{kc.summary || kc.description || kc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {topicContent.detailedContent && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-[#4F46E5]" /> Lesson Guide
-                  </h4>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-gray-200 text-xs text-gray-800 leading-relaxed whitespace-pre-line font-sans">
-                    {topicContent.detailedContent}
-                  </div>
+                <div className="p-4 rounded-xl bg-slate-50/40 border border-slate-200/80 text-xs text-slate-800 leading-relaxed whitespace-pre-line font-sans">
+                  {topicContent.detailedContent}
                 </div>
               )}
 
+              {/* Code Snippets */}
               {topicContent.codeExamples?.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-                    <Code2 className="w-3.5 h-3.5 text-indigo-600" /> Real Code Example
+                <div className="space-y-2 pt-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <Code2 className="w-3.5 h-3.5 text-indigo-600" /> Production Code
                   </h4>
                   {topicContent.codeExamples.map((ex, cIdx) => (
-                    <div key={cIdx} className="rounded-xl border border-gray-800 bg-slate-900 text-slate-100 overflow-hidden text-xs">
-                      <div className="px-3.5 py-2 bg-slate-950/80 border-b border-gray-800 flex items-center justify-between">
-                        <span className="font-mono text-[11px] text-slate-300">{ex.title || 'Code Snippet'}</span>
+                    <div key={cIdx} className="rounded-xl border border-slate-800 bg-slate-950 text-slate-100 overflow-hidden text-xs shadow-xs">
+                      <div className="px-3.5 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-mono font-bold text-indigo-400 bg-indigo-950/80 px-1.5 py-0.5 rounded">
+                            {ex.language || 'Code'}
+                          </span>
+                          <span className="font-mono text-[11px] text-slate-300">{ex.title || 'Implementation Snippet'}</span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -1402,7 +1083,7 @@ export default function LearningRoadmapPage() {
                             setCopiedCodeIdx(cIdx)
                             setTimeout(() => setCopiedCodeIdx(null), 2000)
                           }}
-                          className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-white cursor-pointer"
+                          className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-white cursor-pointer transition-colors"
                         >
                           {copiedCodeIdx === cIdx ? (
                             <>
@@ -1415,11 +1096,11 @@ export default function LearningRoadmapPage() {
                           )}
                         </button>
                       </div>
-                      <pre className="p-3.5 overflow-x-auto font-mono text-[11px] text-emerald-400 leading-relaxed">
+                      <pre className="p-4 overflow-x-auto font-mono text-[11px] text-emerald-400 leading-relaxed">
                         <code>{ex.code}</code>
                       </pre>
                       {ex.explanation && (
-                        <div className="p-2.5 bg-slate-950 border-t border-gray-800 text-[11px] text-slate-400">
+                        <div className="p-2.5 bg-slate-900/60 border-t border-slate-800 text-[11px] text-slate-400">
                           {ex.explanation}
                         </div>
                       )}
@@ -1427,121 +1108,103 @@ export default function LearningRoadmapPage() {
                   ))}
                 </div>
               )}
-
-              {(topicContent.bestPractices?.length > 0 || topicContent.commonPitfalls?.length > 0) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {topicContent.bestPractices?.length > 0 && (
-                    <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 text-xs space-y-1.5">
-                      <div className="font-bold text-emerald-900 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Best Practices
-                      </div>
-                      <ul className="space-y-1 list-disc list-inside text-emerald-950/80 text-[11px]">
-                        {topicContent.bestPractices.map((bp, i) => (
-                          <li key={i}>{bp}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {topicContent.commonPitfalls?.length > 0 && (
-                    <div className="p-3.5 rounded-xl bg-rose-50/50 border border-rose-200 text-xs space-y-1.5">
-                      <div className="font-bold text-rose-900 flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Pitfalls to Avoid
-                      </div>
-                      <ul className="space-y-1 list-disc list-inside text-rose-950/80 text-[11px]">
-                        {topicContent.commonPitfalls.map((pf, i) => (
-                          <li key={i}>{pf}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
-          {/* Modal Tab 2: Curated External Resources */}
+          {/* Tab 2: Curated Resources */}
           {topicContent && contentTab === 'resources' && (
             <div className="space-y-3 pt-2">
               {(!topicContent.resources || topicContent.resources.length === 0) ? (
-                <div className="text-xs text-gray-500 text-center py-6">No external links found.</div>
+                <div className="text-xs text-slate-500 text-center py-6">No external links found.</div>
               ) : (
-                topicContent.resources.map((res, rIdx) => (
-                  <div
-                    key={rIdx}
-                    className="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-indigo-300 transition-colors flex items-start justify-between gap-3"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-gray-900">{res.title}</span>
-                        <Badge className="bg-indigo-50 text-[#4F46E5] border-0 text-[9px] font-semibold">
-                          {res.type || 'Resource'}
-                        </Badge>
-                        {res.isFree && (
-                          <Badge className="bg-emerald-50 text-emerald-700 border-0 text-[9px]">
-                            Free
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-gray-600 leading-snug">{res.description}</p>
-                    </div>
+                topicContent.resources.map((res, rIdx) => {
+                  const typeLower = (res.type || '').toLowerCase()
+                  const Icon =
+                    typeLower.includes('video')
+                      ? PlayCircle
+                      : typeLower.includes('doc')
+                      ? BookOpen
+                      : typeLower.includes('interactive') || typeLower.includes('code')
+                      ? Code2
+                      : FileText
 
-                    <a
-                      href={res.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-gray-700 hover:text-[#4F46E5] font-semibold text-xs transition-colors shrink-0"
+                  return (
+                    <div
+                      key={rIdx}
+                      className="p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-indigo-300 transition-colors flex items-start justify-between gap-3 group"
                     >
-                      Open <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                ))
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-[#4F46E5] flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#4F46E5] group-hover:text-white transition-colors">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-slate-900">{res.title}</span>
+                            <Badge className="bg-slate-100 text-slate-600 border-0 text-[9px] font-medium">
+                              {res.type || 'Resource'}
+                            </Badge>
+                            {res.isFree && (
+                              <Badge className="bg-emerald-50 text-emerald-700 border-0 text-[9px]">
+                                Free
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-600 leading-snug">{res.description}</p>
+                          <div className="text-[10px] text-slate-400 font-medium">
+                            {res.domain}
+                          </div>
+                        </div>
+                      </div>
+
+                      <a
+                        href={res.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-[#4F46E5] font-semibold text-xs transition-colors shrink-0 cursor-pointer"
+                      >
+                        Open <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )
+                })
               )}
             </div>
           )}
 
-          <DialogFooter className="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-[11px] text-gray-500">
+          <DialogFooter className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-[11px] text-slate-500">
               {(() => {
                 const { isFinished, done, total } = getTopicLessonProgress(activeContentTopic)
                 if (isFinished) {
-                  return 'Ready to verify this topic? Pass the quiz to upgrade your profile skill.'
+                  return <span className="text-emerald-700 font-medium flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-600" /> All {total} lessons completed</span>
                 }
-                return `Finish all lessons (${done}/${total} completed) to unlock the practice quiz.`
+                return `${done} of ${total} lessons checked off.`
               })()}
             </div>
 
             <div className="flex items-center gap-2">
               {(() => {
-                const { isFinished, done, total } = getTopicLessonProgress(activeContentTopic)
+                const { isFinished } = getTopicLessonProgress(activeContentTopic)
                 if (isFinished) {
                   return (
                     <Button
                       onClick={() => handleOpenQuiz(activeContentTopic)}
-                      className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 cursor-pointer"
+                      className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 cursor-pointer shadow-xs"
                     >
-                      <HelpCircle className="w-3.5 h-3.5" /> Take Topic Quiz
+                      <HelpCircle className="w-3.5 h-3.5" /> Take Topic Quiz (12 Qs) &rarr;
                     </Button>
                   )
                 }
 
                 return (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleMarkAllLessonsComplete(activeContentTopic)}
-                      className="text-xs font-semibold text-emerald-700 border-emerald-300 hover:bg-emerald-50 gap-1.5 cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5 text-emerald-600" /> Mark Lessons Finished
-                    </Button>
-                    <Button
-                      disabled
-                      className="bg-gray-100 text-gray-400 border border-gray-200 text-xs font-semibold gap-1.5 cursor-not-allowed"
-                    >
-                      <Lock className="w-3.5 h-3.5" /> Quiz Locked ({done}/{total})
-                    </Button>
-                  </>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleMarkAllLessonsComplete(activeContentTopic)}
+                    className="text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-600" /> Mark Lessons Finished
+                  </Button>
                 )
               })()}
             </div>
@@ -1550,69 +1213,65 @@ export default function LearningRoadmapPage() {
       </Dialog>
 
       {/* ======================================================== */}
-      {/* MODAL 2: PHASE 6 QUIZ & ASSESSMENT (DIALOG)              */}
+      {/* MODAL 2: PRACTICE QUIZ (12 QUESTIONS, 4-4-4 DIFFICULTY) */}
       {/* ======================================================== */}
       <Dialog open={quizModalOpen} onOpenChange={setQuizModalOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-6">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px]">
-                Practice Quiz
-              </Badge>
-              <span className="text-[11px] text-gray-500">&bull; Pass Mark: 70%</span>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-6 sm:p-7 rounded-2xl bg-white">
+          <DialogHeader className="space-y-1 pb-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px] font-semibold">
+                  12-Question Assessment
+                </Badge>
+                {quizData?.questions?.[quizCurrentIdx]?.difficulty && !quizResult && (
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                    quizData.questions[quizCurrentIdx].difficulty.toLowerCase() === 'easy'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : quizData.questions[quizCurrentIdx].difficulty.toLowerCase() === 'medium'
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {quizData.questions[quizCurrentIdx].difficulty} Question
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] font-medium text-slate-500">70% to pass</span>
             </div>
-            <DialogTitle className="text-base font-bold text-gray-900 pt-1">
+            <DialogTitle className="text-lg font-bold text-slate-900 tracking-tight">
               {activeQuizTopic?.title}
             </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Answer the questions below to test what you have learned.
+            <DialogDescription className="text-xs text-slate-500">
+              Answer all 12 scenario questions to test your practical knowledge and upgrade your profile skill.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Loading Quiz */}
+          {/* Loading state */}
           {isLoadingAssessment && !quizData && (
             <Loading
               variant="card"
-              message="Generating your topic quiz..."
-              description="Preparing realistic multiple-choice questions to test your practical knowledge."
+              message="Preparing quiz questions..."
+              description="Structuring 12 practical scenario questions for this topic."
             />
           )}
 
           {/* Active Quiz Taking View */}
           {quizData && !quizResult && (
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between text-xs text-gray-500 border-b border-gray-150 pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-800">
-                    Question {quizCurrentIdx + 1} of {quizData.questions?.length || 12}
-                  </span>
-                  {quizData.questions?.[quizCurrentIdx]?.difficulty && (
-                    <Badge
-                      className={`text-[10px] font-bold ${
-                        quizData.questions[quizCurrentIdx].difficulty.toLowerCase() === 'easy'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : quizData.questions[quizCurrentIdx].difficulty.toLowerCase() === 'medium'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-rose-50 text-rose-700 border-rose-200'
-                      }`}
-                    >
-                      {quizData.questions[quizCurrentIdx].difficulty}
-                    </Badge>
-                  )}
-                </div>
+              {/* Question Navigation Bar (1 to 12) */}
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-semibold text-slate-800">
+                  Question {quizCurrentIdx + 1} of {quizData.questions?.length || 12}
+                </span>
                 <span className="text-[11px] text-indigo-600 font-medium">
                   {Object.keys(quizAnswers).length} of {quizData.questions?.length || 12} answered
                 </span>
               </div>
 
-              {/* 12-Question Quick Jump Navigation Strip */}
               {quizData.questions && quizData.questions.length > 0 && (
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 select-none">
                   {quizData.questions.map((q, idx) => {
                     const isAnswered = quizAnswers[q.id] !== undefined
                     const isCurrent = quizCurrentIdx === idx
-                    const diff = q.difficulty || (idx < 4 ? 'Easy' : idx < 8 ? 'Medium' : 'Hard')
-
                     return (
                       <button
                         key={q.id || idx}
@@ -1623,9 +1282,8 @@ export default function LearningRoadmapPage() {
                             ? 'bg-[#4F46E5] text-white ring-2 ring-indigo-200 shadow-xs'
                             : isAnswered
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
-                        title={`Question ${idx + 1} (${diff}) - ${isAnswered ? 'Answered' : 'Unanswered'}`}
                       >
                         {idx + 1}
                       </button>
@@ -1635,15 +1293,15 @@ export default function LearningRoadmapPage() {
               )}
 
               {quizData.questions?.[quizCurrentIdx] && (
-                <div className="space-y-3">
+                <div className="space-y-3 pt-1">
                   {quizData.questions[quizCurrentIdx].scenario && (
-                    <div className="p-3 rounded-lg bg-slate-50 border border-gray-200 text-[11px] text-gray-600 leading-snug">
-                      <span className="font-semibold text-gray-800">Scenario: </span>
+                    <div className="p-3 rounded-lg bg-indigo-50/40 border-l-2 border-indigo-400 text-[11px] text-slate-600 leading-snug">
+                      <span className="font-semibold text-slate-800">Context: </span>
                       {quizData.questions[quizCurrentIdx].scenario}
                     </div>
                   )}
 
-                  <h4 className="text-sm font-bold text-gray-900 leading-snug">
+                  <h4 className="text-sm font-semibold text-slate-900 leading-snug">
                     {quizData.questions[quizCurrentIdx].question}
                   </h4>
 
@@ -1659,12 +1317,12 @@ export default function LearningRoadmapPage() {
                           onClick={() => setQuizAnswers((prev) => ({ ...prev, [qId]: optIdx }))}
                           className={`w-full text-left p-3 rounded-xl border text-xs font-medium transition-all flex items-start gap-3 cursor-pointer ${
                             isSelected
-                              ? 'border-[#4F46E5] bg-indigo-50 text-[#4F46E5] font-semibold'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-800 bg-white'
+                              ? 'border-[#4F46E5] bg-indigo-50/70 text-[#4F46E5] font-semibold'
+                              : 'border-slate-200 hover:border-slate-300 text-slate-800 bg-white'
                           }`}
                         >
                           <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 font-bold ${
-                            isSelected ? 'bg-[#4F46E5] text-white' : 'bg-slate-100 text-gray-600'
+                            isSelected ? 'bg-[#4F46E5] text-white' : 'bg-slate-100 text-slate-600'
                           }`}>
                             {String.fromCharCode(65 + optIdx)}
                           </span>
@@ -1676,13 +1334,13 @@ export default function LearningRoadmapPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={quizCurrentIdx === 0}
                   onClick={() => setQuizCurrentIdx((prev) => Math.max(0, prev - 1))}
-                  className="text-xs cursor-pointer"
+                  className="text-xs cursor-pointer h-8"
                 >
                   Previous
                 </Button>
@@ -1691,16 +1349,16 @@ export default function LearningRoadmapPage() {
                   <Button
                     size="sm"
                     onClick={() => setQuizCurrentIdx((prev) => prev + 1)}
-                    className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs cursor-pointer"
+                    className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs cursor-pointer h-8"
                   >
-                    Next Question
+                    Next Question &rarr;
                   </Button>
                 ) : (
                   <Button
                     size="sm"
                     disabled={isSubmittingAssessment}
                     onClick={handleSubmitQuiz}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer h-8 shadow-xs"
                   >
                     {isSubmittingAssessment ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                     Submit Answers ({Object.keys(quizAnswers).length}/{quizData.questions?.length || 12})
@@ -1710,85 +1368,84 @@ export default function LearningRoadmapPage() {
             </div>
           )}
 
-          {/* Quiz Result View */}
+          {/* Results View */}
           {quizResult && (
-            <div className="space-y-5 pt-2">
-              <div className={`p-5 rounded-2xl border text-center space-y-2 ${
+            <div className="space-y-4 pt-2">
+              <div className={`p-4 rounded-xl border text-center space-y-1.5 ${
                 quizResult.passed
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
                   : 'bg-amber-50 border-amber-200 text-amber-950'
               }`}>
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-xs mx-auto">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-2xs mx-auto">
                   {quizResult.passed ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                   ) : (
-                    <AlertTriangle className="w-6 h-6 text-amber-600" />
+                    <AlertTriangle className="w-5 h-5 text-amber-600" />
                   )}
                 </div>
-                <h3 className="text-lg font-extrabold tracking-tight">
+                <h3 className="text-base font-bold">
                   {quizResult.passed ? 'Quiz Passed! 🎉' : 'Quiz Completed'}
                 </h3>
-                <div className="text-xs font-medium">
-                  Your Score: <span className="font-extrabold text-sm">{quizResult.score}%</span> &bull; {quizResult.correctCount} of {quizResult.totalQuestions} correct
+                <div className="text-xs">
+                  Your Score: <span className="font-bold">{quizResult.score}%</span> &bull; {quizResult.correctCount} of {quizResult.totalQuestions} correct
                 </div>
               </div>
 
               {quizResult.passed && (
-                <div className="p-4 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 text-white shadow-md space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-                    <Sparkles className="w-4 h-4" /> Skill Upgrade Unlocked!
+                <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-1.5 shadow-sm">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <Sparkles className="w-4 h-4" /> Ready to Update Profile Skill
                   </div>
-                  <p className="text-xs text-emerald-100 leading-snug">
-                    Great job! You showed you know <span className="font-bold text-white">{quizResult.skillName || activeQuizTopic?.title}</span> well! Update your profile level to show what you learned.
+                  <p className="text-[11px] text-slate-300">
+                    Confirm your mastery in <span className="font-semibold text-white">{quizResult.skillName || activeQuizTopic?.title}</span> to upgrade your student profile score.
                   </p>
                   <Button
                     onClick={() => {
                       handleOpenSkillUpdate(quizResult.skillName || activeQuizTopic?.title.split(' ')[0], 'Intermediate')
                       setQuizModalOpen(false)
                     }}
-                    className="w-full bg-white text-emerald-800 hover:bg-slate-100 font-bold text-xs rounded-lg mt-1 cursor-pointer"
+                    className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold text-xs rounded-lg mt-1 cursor-pointer h-8"
                   >
-                    Confirm & Upgrade Profile Skill
+                    Confirm & Update Profile Skill
                   </Button>
                 </div>
               )}
 
-              <div className="space-y-3 pt-1">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                  Question Review & Explanations ({quizResult.totalQuestions || 12} Questions)
+              {/* Explanations */}
+              <div className="space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Question Review ({quizResult.totalQuestions || 12} Questions)
                 </h4>
                 {(quizResult.results || []).map((r, rIdx) => {
                   const diff = r.difficulty || (rIdx < 4 ? 'Easy' : rIdx < 8 ? 'Medium' : 'Hard')
                   return (
                     <div
                       key={rIdx}
-                      className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                      className={`p-3 rounded-xl border text-xs space-y-1 ${
                         r.isCorrect ? 'bg-emerald-50/40 border-emerald-200' : 'bg-rose-50/40 border-rose-200'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-500 text-[11px]">Q{rIdx + 1}</span>
-                          <Badge
-                            className={`text-[10px] font-bold ${
-                              diff.toLowerCase() === 'easy'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : diff.toLowerCase() === 'medium'
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-rose-50 text-rose-700 border-rose-200'
-                            }`}
-                          >
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-500 text-[10px]">Q{rIdx + 1}</span>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
+                            diff.toLowerCase() === 'easy'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : diff.toLowerCase() === 'medium'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
                             {diff}
-                          </Badge>
+                          </span>
                         </div>
-                        <Badge className={r.isCorrect ? 'bg-emerald-100 text-emerald-800 border-0 shrink-0' : 'bg-rose-100 text-rose-800 border-0 shrink-0'}>
+                        <span className={`text-[10px] font-bold ${r.isCorrect ? 'text-emerald-700' : 'text-rose-700'}`}>
                           {r.isCorrect ? 'Correct' : 'Incorrect'}
-                        </Badge>
+                        </span>
                       </div>
-                      <p className="font-bold text-gray-900">{r.question}</p>
+                      <p className="font-semibold text-slate-900 leading-snug">{r.question}</p>
                       {r.explanation && (
-                        <p className="text-[11px] text-gray-600 leading-snug pt-0.5">
-                          <span className="font-semibold text-gray-800">Explanation: </span>
+                        <p className="text-[11px] text-slate-600 leading-snug pt-0.5">
+                          <span className="font-medium text-slate-700">Explanation: </span>
                           {r.explanation}
                         </p>
                       )}
@@ -1800,9 +1457,9 @@ export default function LearningRoadmapPage() {
               <DialogFooter className="pt-2">
                 <Button
                   onClick={() => setQuizModalOpen(false)}
-                  className="bg-gray-900 hover:bg-black text-white text-xs font-semibold cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer w-full sm:w-auto h-8"
                 >
-                  Close & Continue Roadmap
+                  Close & Continue
                 </Button>
               </DialogFooter>
             </div>
@@ -1816,20 +1473,20 @@ export default function LearningRoadmapPage() {
       <Dialog open={skillModalOpen} onOpenChange={setSkillModalOpen}>
         <DialogContent className="max-w-md p-6">
           <DialogHeader>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold mb-1">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold mb-1">
               <GraduationCap className="w-5 h-5" />
             </div>
-            <DialogTitle className="text-base font-bold text-gray-900">
-              Update Learned Skill in Profile
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Update Skill in Profile
             </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Confirm that you have learned this skill. It will be added to your profile and your Career Match score will improve immediately.
+            <DialogDescription className="text-xs text-slate-500">
+              Save this skill to your verified student profile to improve your role readiness score.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">Skill Name</label>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Skill Name</label>
               <Input
                 type="text"
                 value={skillToUpdate}
@@ -1839,7 +1496,7 @@ export default function LearningRoadmapPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">Proficiency Level</label>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Proficiency Level</label>
               <div className="grid grid-cols-3 gap-2">
                 {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
                   <button
@@ -1849,7 +1506,7 @@ export default function LearningRoadmapPage() {
                     className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                       skillProficiency === level
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
                     {level}
@@ -1859,7 +1516,7 @@ export default function LearningRoadmapPage() {
             </div>
           </div>
 
-          <DialogFooter className="mt-4 pt-3 border-t border-gray-200">
+          <DialogFooter className="mt-4 pt-3 border-t border-slate-200">
             <Button
               variant="outline"
               onClick={() => setSkillModalOpen(false)}
@@ -1873,7 +1530,7 @@ export default function LearningRoadmapPage() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer"
             >
               {isUpdatingSkill ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              Save Skill to Profile
+              Save to Profile
             </Button>
           </DialogFooter>
         </DialogContent>

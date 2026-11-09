@@ -33,18 +33,21 @@ import {
   TrendingUp,
   Lightbulb,
   GraduationCap,
-  PlusCircle,
-  ChevronDown,
   Sparkles,
-  Layers,
+  Search,
+  ShieldCheck,
+  Zap,
+  ChevronRight,
+  Plus,
 } from 'lucide-react'
 
 export default function SkillAnalysisPage() {
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
   const [selectedRole, setSelectedRole] = useState('')
-  const [activeTab, setActiveTab] = useState('summary') // 'summary' | 'current' | 'missing'
-  const [missingSkillFilter, setMissingSkillFilter] = useState('all') // 'all' | 'related' | 'career'
+  const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'missing' | 'upgrade' | 'ready' | 'focus'
+  const [missingSkillRelationFilter, setMissingSkillRelationFilter] = useState('all') // 'all' | 'related' | 'career'
+  const [searchQuery, setSearchQuery] = useState('')
   const [successToast, setSuccessToast] = useState('')
 
   // Direct Skill Update Modal
@@ -162,14 +165,14 @@ export default function SkillAnalysisPage() {
       return {
         isRelated: true,
         relatedTo: 'React',
-        description: 'Connected to your React skill. It will be easier to learn because you already know React.',
+        description: 'Builds directly on your React knowledge and is easier to learn.',
       }
     }
 
     return {
       isRelated: false,
       relatedTo: null,
-      description: `A core skill needed for a ${currentRole} job.`,
+      description: `Core prerequisite expected by industry employers for ${currentRole}.`,
     }
   }
 
@@ -184,14 +187,70 @@ export default function SkillAnalysisPage() {
     return { relatedCount, careerCount }
   }, [missingSkills, proficientSkills, skillsToUpgrade, profile, currentRole])
 
-  const filteredMissingSkills = useMemo(() => {
-    return missingSkills.filter((sk) => {
-      const rel = getSkillRelation(sk)
-      if (missingSkillFilter === 'related') return rel.isRelated
-      if (missingSkillFilter === 'career') return !rel.isRelated
-      return true
-    })
-  }, [missingSkills, missingSkillFilter, proficientSkills, skillsToUpgrade, profile, currentRole])
+  // Total evaluated skills count
+  const totalEvaluatedSkills = proficientSkills.length + skillsToUpgrade.length + missingSkills.length
+
+  // Filtered skills based on activeFilter, search, and missing relation filter
+  const filteredSkillsList = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    let items = []
+
+    if (activeFilter === 'all' || activeFilter === 'missing') {
+      const missingFormatted = missingSkills
+        .filter((sk) => {
+          if (activeFilter === 'missing' && missingSkillRelationFilter !== 'all') {
+            const rel = getSkillRelation(sk)
+            if (missingSkillRelationFilter === 'related') return rel.isRelated
+            if (missingSkillRelationFilter === 'career') return !rel.isRelated
+          }
+          return true
+        })
+        .map((sk) => ({
+          ...sk,
+          type: 'missing',
+          statusLabel: 'Missing',
+          relation: getSkillRelation(sk),
+        }))
+      items = [...items, ...missingFormatted]
+    }
+
+    if (activeFilter === 'all' || activeFilter === 'upgrade') {
+      const upgradeFormatted = skillsToUpgrade.map((sk) => ({
+        ...sk,
+        type: 'upgrade',
+        statusLabel: 'Needs Upgrade',
+      }))
+      items = [...items, ...upgradeFormatted]
+    }
+
+    if (activeFilter === 'all' || activeFilter === 'ready') {
+      const readyFormatted = proficientSkills.map((sk) => ({
+        ...sk,
+        type: 'ready',
+        statusLabel: 'Job Ready',
+      }))
+      items = [...items, ...readyFormatted]
+    }
+
+    if (query) {
+      items = items.filter((item) =>
+        (item.name || '').toLowerCase().includes(query) ||
+        (item.reasoning || '').toLowerCase().includes(query) ||
+        (item.gap || '').toLowerCase().includes(query)
+      )
+    }
+
+    return items
+  }, [
+    activeFilter,
+    missingSkillRelationFilter,
+    searchQuery,
+    missingSkills,
+    skillsToUpgrade,
+    proficientSkills,
+    currentRole,
+  ])
 
   const showToast = (msg) => {
     setSuccessToast(msg)
@@ -203,7 +262,7 @@ export default function SkillAnalysisPage() {
     const role = targetRoleOverride || currentRole
     try {
       await generateSkillAnalysis({ targetRole: role }).unwrap()
-      showToast(`Skill analysis updated for ${role}!`)
+      showToast(`Skill benchmark updated for ${role}!`)
     } catch (err) {
       console.error('Failed to generate skill analysis:', err)
     }
@@ -226,86 +285,50 @@ export default function SkillAnalysisPage() {
       }).unwrap()
 
       setSkillModalOpen(false)
-      showToast(res.message || `Skill "${skillToUpdate}" updated to ${skillProficiency}!`)
+      showToast(res.message || `Skill "${skillToUpdate}" marked as ${skillProficiency}!`)
     } catch (err) {
       console.error('Failed to update skill:', err)
     }
   }
 
   return (
-    <div className="space-y-6 max-w-6xl pb-16">
-      {/* Toast Notification Banner */}
+    <div className="space-y-6 max-w-5xl mx-auto pb-20">
+      {/* Toast Alert Notification */}
       {successToast && (
-        <div className="p-3.5 rounded-xl bg-emerald-500 text-white font-medium text-xs flex items-center justify-between shadow-lg shadow-emerald-200 animate-in fade-in slide-in-from-top-2">
+        <div className="p-3.5 rounded-xl bg-slate-900 text-white text-xs font-medium flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successToast}</span>
           </div>
-          <button onClick={() => setSuccessToast('')} className="text-white/80 hover:text-white cursor-pointer">
+          <button onClick={() => setSuccessToast('')} className="text-slate-400 hover:text-white px-1">
             &times;
           </button>
         </div>
       )}
 
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+      {/* Modern, Clean Executive Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#4F46E5]">
-              <Target className="w-4 h-4" />
-            </div>
-            <h1 className="page-title text-gray-900">Skill Gap Analysis</h1>
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+              Capability Matrix
+            </span>
+            <span className="text-slate-300">&bull;</span>
+            <span className="text-xs font-medium text-slate-500">
+              Target Role: {currentRole}
+            </span>
           </div>
-          <p className="page-subtitle mt-1">
-            See how your skills match your dream career, what you are good at, and what you need to learn next.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
+            Skill Gap Analysis
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-xl">
+            Real-time benchmark comparing your current profile against industry standards for {currentRole}.
           </p>
         </div>
 
-        {/* Global CTA Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            onClick={() => handleRunAnalysis()}
-            disabled={isGeneratingAnalysis}
-            variant="outline"
-            className="text-xs font-semibold gap-1.5 border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5] cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingAnalysis ? 'animate-spin' : ''}`} />
-            {analysis ? 'Re-run Analysis' : 'Run Analysis'}
-          </Button>
-
-          <Button
-            onClick={() => navigate('/dashboard/learning-roadmap')}
-            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 shadow-xs cursor-pointer"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            View Learning Roadmap
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Target Career Selector Bar */}
-      <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-150 flex items-center justify-center text-[#4F46E5] shrink-0">
-            <Target className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Selected Career Path
-            </div>
-            <div className="text-sm font-extrabold text-gray-900 mt-0.5">
-              {currentRole}
-            </div>
-          </div>
-        </div>
-
-        {/* Career Selection Dropdown (Up to 3 Chosen Careers) */}
-        <div className="flex items-center gap-2.5">
-          <label htmlFor="career-select" className="text-xs font-semibold text-gray-600 shrink-0">
-            Switch Career:
-          </label>
-          <div className="min-w-[240px]">
+        {/* Global Controls & Integrated Career Selector */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="min-w-[200px]">
             <Select
               id="career-select"
               value={currentRole}
@@ -318,6 +341,15 @@ export default function SkillAnalysisPage() {
               }))}
             />
           </div>
+
+          <Button
+            onClick={() => navigate('/dashboard/learning-roadmap')}
+            variant="outline"
+            className="text-xs font-medium border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-300 gap-1.5 h-9 cursor-pointer"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Learning Roadmap
+          </Button>
         </div>
       </div>
 
@@ -325,8 +357,8 @@ export default function SkillAnalysisPage() {
       {loadingAnalysis && (
         <Loading
           variant="ai"
-          message={`Checking your skills for ${currentRole}...`}
-          description="Comparing your background with industry standards and calculating your career match."
+          message={`Benchmarking your skills for ${currentRole}...`}
+          description="Comparing your background with live industry requirements and calculating your readiness score."
         />
       )}
 
@@ -335,21 +367,21 @@ export default function SkillAnalysisPage() {
         <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 text-indigo-900 flex items-center gap-3 animate-pulse">
           <RefreshCw className="w-4 h-4 text-[#4F46E5] animate-spin" />
           <div className="text-xs">
-            <span className="font-medium text-indigo-950">Analyzing your skills for {currentRole}...</span> Please wait a few moments.
+            <span className="font-semibold text-indigo-950">Auditing skills for {currentRole}...</span> Updating your capability matrix.
           </div>
         </div>
       )}
 
       {/* Empty State */}
       {!analysis && !loadingAnalysis && (
-        <div className="p-10 text-center rounded-2xl bg-white border border-gray-200 shadow-xs space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center border border-indigo-100">
-            <Target className="w-7 h-7" />
+        <div className="p-12 text-center rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center border border-indigo-100">
+            <Target className="w-6 h-6" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-bold text-gray-900">No Analysis for {currentRole} Yet</h3>
-            <p className="text-xs text-gray-500">
-              Click the button below to see how your current skills match what companies look for in a <span className="font-semibold text-gray-800">{currentRole}</span>.
+            <h3 className="text-base font-bold text-slate-900">No Benchmark Data for {currentRole}</h3>
+            <p className="text-xs text-slate-500">
+              Run an automated AI skill audit to compare your profile with market expectations for this career.
             </p>
           </div>
           <Button
@@ -357,551 +389,456 @@ export default function SkillAnalysisPage() {
             disabled={isGeneratingAnalysis}
             className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-5 py-2.5 rounded-xl gap-2 shadow-xs cursor-pointer"
           >
-            <Sparkles className="w-4 h-4" /> Analyze Skills for {currentRole}
+            <Sparkles className="w-4 h-4" /> Run Skill Audit for {currentRole}
           </Button>
         </div>
       )}
 
-      {/* Active Analysis View */}
+      {/* Active Analysis Dashboard */}
       {analysis && (
         <div className="space-y-6">
-          {/* THREE CLEAN TABS NAVIGATION */}
-          <div className="flex items-center gap-2 border-b border-gray-200 pb-px">
-            {/* Tab 1: Career Overview Dashboard */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('summary')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === 'summary'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <TrendingUp className="w-3.5 h-3.5" />
-              Career Overview
-            </button>
+          {/* ========================================================= */}
+          {/* 1. SINGLE EXECUTIVE READINESS STRIP (ZERO DUPLICATION)    */}
+          {/* ========================================================= */}
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+            {/* Match Gauge & Status */}
+            <div className="md:col-span-4 flex items-center gap-4 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0 md:pr-5">
+              <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    className="text-slate-100"
+                    strokeWidth="3.2"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    className={
+                      analysis.matchScore >= 75
+                        ? 'text-emerald-500'
+                        : analysis.matchScore >= 50
+                        ? 'text-indigo-600'
+                        : 'text-amber-500'
+                    }
+                    strokeDasharray={`${analysis.matchScore}, 100`}
+                    strokeWidth="3.2"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center">
+                  <span className="text-xl font-black text-slate-900 tracking-tight">
+                    {analysis.matchScore}%
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                    Match
+                  </span>
+                </div>
+              </div>
 
-            {/* Tab 2: Skills You Have */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('current')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === 'current'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Your Current Skills
-              <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[10px] ml-1 font-bold">
-                {proficientSkills.length + skillsToUpgrade.length}
-              </Badge>
-            </button>
+              <div className="space-y-1">
+                <Badge
+                  className={
+                    analysis.matchScore >= 75
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 text-[10px] font-bold'
+                      : analysis.matchScore >= 50
+                      ? 'bg-indigo-50 text-indigo-800 border-indigo-200 text-[10px] font-bold'
+                      : 'bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-bold'
+                  }
+                >
+                  {analysis.matchScore >= 75 ? 'Job Ready' : analysis.matchScore >= 50 ? 'Strong Foundation' : 'Foundation Building'}
+                </Badge>
+                <div className="text-xs font-semibold text-slate-800">
+                  {currentRole}
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  <span>Est: <strong className="text-slate-700">{analysis.estimatedTimeToReadiness || '8-12 weeks'}</strong></span>
+                </div>
+              </div>
+            </div>
 
-            {/* Tab 3: Skills to Learn (Alone in its own tab) */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('missing')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-                activeTab === 'missing'
-                  ? 'border-[#4F46E5] text-[#4F46E5]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Skills You Need to Learn
-              <Badge className="bg-rose-50 text-rose-800 border-rose-200 text-[10px] ml-1 font-bold">
-                {missingSkills.length}
-              </Badge>
-            </button>
-          </div>
+            {/* AI Career Synthesis & Strengths */}
+            <div className="md:col-span-8 space-y-2.5">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {analysis.summary}
+              </p>
 
-          {/* ======================================================= */}
-          {/* TAB 1: OVERVIEW & SUMMARY (DASHBOARD STYLE)             */}
-          {/* ======================================================= */}
-          {activeTab === 'summary' && (
-            <div className="space-y-6">
-              {/* 4 Quick Stat Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Career Match</div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-gray-900">{analysis.matchScore}%</span>
-                    <span className="text-[10px] font-bold text-indigo-600">
-                      {analysis.matchScore >= 75 ? 'Job Ready' : analysis.matchScore >= 45 ? 'Good Start' : 'Getting Started'}
+              {strengths.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">
+                    Verified Strengths:
+                  </span>
+                  {strengths.slice(0, 6).map((st, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-150"
+                    >
+                      <Check className="w-2.5 h-2.5 text-emerald-600" />
+                      {st}
                     </span>
-                  </div>
-                  <div className="text-[11px] text-gray-500">Based on real job requirements</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Skills You Know Well</div>
-                  <div className="text-2xl font-black text-emerald-600">{proficientSkills.length}</div>
-                  <div className="text-[11px] text-gray-500">No upgrade needed</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Skills to Improve</div>
-                  <div className="text-2xl font-black text-amber-600">{skillsToUpgrade.length}</div>
-                  <div className="text-[11px] text-gray-500">Need more practice</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white border border-gray-200 shadow-xs space-y-1">
-                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Skills to Learn</div>
-                  <div className="text-2xl font-black text-rose-600">{missingSkills.length}</div>
-                  <div className="text-[11px] text-gray-500">New skills for this job</div>
-                </div>
-              </div>
-
-              {/* Main Summary & Match Gauge Card */}
-              <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                {/* Circular Gauge */}
-                <div className="md:col-span-4 flex flex-col items-center justify-center p-5 rounded-xl bg-linear-to-b from-slate-50 to-indigo-50/30 border border-gray-100 text-center">
-                  <div className="relative w-28 h-28 flex items-center justify-center">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <path
-                        className="text-gray-200"
-                        strokeWidth="3.2"
-                        stroke="currentColor"
-                        fill="none"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                      <path
-                        className={
-                          analysis.matchScore >= 75
-                            ? 'text-emerald-500'
-                            : analysis.matchScore >= 45
-                            ? 'text-indigo-600'
-                            : 'text-amber-500'
-                        }
-                        strokeDasharray={`${analysis.matchScore}, 100`}
-                        strokeWidth="3.2"
-                        strokeLinecap="round"
-                        stroke="currentColor"
-                        fill="none"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                    </svg>
-                    <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-gray-900 tracking-tight">
-                        {analysis.matchScore}%
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                        Match
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 text-xs font-bold text-gray-800">
-                    {analysis.matchScore >= 75 ? 'Strong Match for this Job' : analysis.matchScore >= 45 ? 'Good Working Foundation' : 'Starting Your Journey'}
-                  </div>
-                  <div className="mt-1 flex items-center gap-1 text-[11px] text-gray-500">
-                    <Clock className="w-3 h-3 text-gray-400" />
-                    Estimated time to complete: <span className="font-bold text-gray-700">{analysis.estimatedTimeToReadiness || '2-3 months'}</span>
-                  </div>
-                </div>
-
-                {/* AI Plain English Summary & Quick Actions */}
-                <div className="md:col-span-8 space-y-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-indigo-50 text-[#4F46E5] border-indigo-200 text-[10px] font-bold">
-                        Career Summary
-                      </Badge>
-                      <span className="text-xs text-gray-500">&bull; Goal: {analysis.targetRole}</span>
-                    </div>
-                    <p className="text-xs text-gray-700 leading-relaxed pt-1">
-                      {analysis.summary}
-                    </p>
-                  </div>
-
-                  {/* What You are Good At */}
-                  {strengths.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-gray-100">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        What You Are Already Good At
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {strengths.map((st, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          >
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            {st}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="pt-2 flex flex-wrap items-center gap-3">
-                    <Button
-                      onClick={() => setActiveTab('missing')}
-                      variant="outline"
-                      className="text-xs font-semibold gap-1.5 border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5] cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
-                      See Skills You Need to Learn ({missingSkills.length})
-                    </Button>
-
-                    <Button
-                      onClick={() => navigate('/dashboard/learning-roadmap')}
-                      className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-4 py-2 rounded-xl gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      Open Learning Roadmap
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recommended Next Steps */}
-              {recommendedFocusAreas.length > 0 && (
-                <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4 text-amber-500" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                      Recommended Next Steps
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {recommendedFocusAreas.map((area, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-gray-150 text-xs text-gray-700"
-                      >
-                        <span className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                          {idx + 1}
-                        </span>
-                        <span className="leading-snug">{area}</span>
-                      </div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
-          )}
+          </div>
 
-          {/* ======================================================= */}
-          {/* TAB 2: YOUR CURRENT SKILLS (PROFICIENT + TO IMPROVE)    */}
-          {/* ======================================================= */}
-          {activeTab === 'current' && (
-            <div className="space-y-6">
-              {/* Explanation header */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-gray-200 text-xs text-gray-600 flex items-center justify-between">
-                <span>
-                  Here are the skills you currently have recorded in your profile. You can see which ones are ready for work and which ones need more practice.
+          {/* ========================================================= */}
+          {/* 2. UNIFIED FILTER STRIP (SEGMENTED TABS + SEARCH)         */}
+          {/* ========================================================= */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  activeFilter === 'all'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                All Skills ({totalEvaluatedSkills})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveFilter('missing')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeFilter === 'missing'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span>Missing Skills</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeFilter === 'missing' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700'
+                }`}>
+                  {missingSkills.length}
                 </span>
-                <span className="font-bold text-gray-800 shrink-0 ml-3">
-                  {proficientSkills.length + skillsToUpgrade.length} Skills Listed
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveFilter('upgrade')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeFilter === 'upgrade'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span>Needs Upgrade</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeFilter === 'upgrade' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'
+                }`}>
+                  {skillsToUpgrade.length}
                 </span>
-              </div>
+              </button>
 
-              {/* Section 1: Skills You Know Well */}
-              <div className="rounded-2xl bg-white border border-emerald-200 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                      <CheckCircle2 className="w-4.5 h-4.5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">Skills You Know Well</h3>
-                      <p className="caption-text text-gray-500">These skills match what companies look for in a {currentRole}</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs font-bold">
-                    {proficientSkills.length} Ready
-                  </Badge>
-                </div>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('ready')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeFilter === 'ready'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span>Job Ready</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeFilter === 'ready' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'
+                }`}>
+                  {proficientSkills.length}
+                </span>
+              </button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {proficientSkills.length === 0 ? (
-                    <div className="col-span-2 text-xs text-gray-400 italic py-6 text-center">
-                      You don't have any job-ready skills listed yet. Start learning with the roadmap!
-                    </div>
-                  ) : (
-                    proficientSkills.map((sk, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3.5 rounded-xl bg-emerald-50/40 border border-emerald-150 space-y-1.5 text-xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-900 text-sm">{sk.name}</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            {sk.currentLevel || 'Job Ready'}
-                          </span>
-                        </div>
-                        {sk.reasoning && (
-                          <p className="text-[11px] text-gray-600 leading-snug">
-                            {sk.reasoning}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              {recommendedFocusAreas.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter('focus')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeFilter === 'focus'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  <span>Action Plan</span>
+                </button>
+              )}
+            </div>
 
-              {/* Section 2: Skills to Improve */}
-              <div className="rounded-2xl bg-white border border-amber-200 p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-amber-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
-                      <AlertTriangle className="w-4.5 h-4.5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">Skills to Improve</h3>
-                      <p className="caption-text text-gray-500">You know the basics, but need more practice to be job-ready</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-amber-100 text-amber-800 border-0 text-xs font-bold">
-                    {skillsToUpgrade.length} to Improve
-                  </Badge>
-                </div>
+            {/* Quick Search */}
+            <div className="relative w-full sm:w-56 shrink-0">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search skills..."
+                className="pl-8 text-xs h-8 bg-slate-50 border-slate-200 focus:bg-white"
+              />
+            </div>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {skillsToUpgrade.length === 0 ? (
-                    <div className="col-span-2 text-xs text-gray-400 italic py-6 text-center">
-                      Great! All your existing skills match the level needed for this job.
-                    </div>
-                  ) : (
-                    skillsToUpgrade.map((sk, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3.5 rounded-xl bg-amber-50/40 border border-amber-150 space-y-2 text-xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-900 text-sm">{sk.name}</span>
-                          <div className="flex items-center gap-1.5 text-[10px]">
-                            <span className="text-amber-800 font-semibold bg-amber-100 px-1.5 py-0.5 rounded">
-                              Current: {sk.currentLevel}
-                            </span>
-                            <span className="text-gray-400">&rarr;</span>
-                            <span className="text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded">
-                              Goal: {sk.requiredLevel || 'Intermediate'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <p className="text-[11px] text-gray-600 leading-snug">
-                          {sk.gap || sk.reasoning || `Practice real projects in ${sk.name} to reach ${sk.requiredLevel || 'Intermediate'} level.`}
-                        </p>
-
-                        <div className="flex items-center justify-between pt-1 border-t border-amber-100">
-                          {sk.priority && (
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              sk.priority.toLowerCase() === 'high'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {sk.priority} Priority
-                            </span>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenSkillUpdate(sk.name, sk.requiredLevel || 'Intermediate')}
-                            className="text-[10px] font-bold text-amber-900 hover:text-amber-700 bg-amber-100/90 hover:bg-amber-200 px-2 py-1 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
-                          >
-                            <PlusCircle className="w-3 h-3" /> I Practiced This (Update Level)
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+          {/* Sub-Filter for Missing Skills Category */}
+          {activeFilter === 'missing' && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-500 font-medium">Show:</span>
+              <button
+                type="button"
+                onClick={() => setMissingSkillRelationFilter('all')}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  missingSkillRelationFilter === 'all'
+                    ? 'bg-slate-200 text-slate-800 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                All Missing ({missingSkills.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMissingSkillRelationFilter('related')}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  missingSkillRelationFilter === 'related'
+                    ? 'bg-sky-100 text-sky-800 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                Connected to Existing ({missingSkillsStats.relatedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMissingSkillRelationFilter('career')}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  missingSkillRelationFilter === 'career'
+                    ? 'bg-purple-100 text-purple-800 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                Core Prerequisites ({missingSkillsStats.careerCount})
+              </button>
             </div>
           )}
 
-          {/* ======================================================= */}
-          {/* TAB 3: SKILLS YOU NEED TO LEARN (ALONE IN ITS OWN TAB)  */}
-          {/* ======================================================= */}
-          {activeTab === 'missing' && (
-            <div className="space-y-6">
-              {/* Clean header explaining the separation */}
-              <div className="p-5 rounded-2xl bg-white border border-rose-200 shadow-xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">
-                      Skills You Need to Learn for {currentRole}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Some of these skills connect to what you already know (like React), while others are completely new tools needed for this job.
-                    </p>
-                  </div>
-
-                  <Badge className="bg-rose-100 text-rose-800 border-0 text-xs font-bold self-start sm:self-auto">
-                    {missingSkills.length} Skills to Learn
-                  </Badge>
+          {/* ========================================================= */}
+          {/* 3. SKILL MATRIX ITEMS LIST (MINIMAL, ELEGANT ROWS)        */}
+          {/* ========================================================= */}
+          {activeFilter !== 'focus' ? (
+            <div className="space-y-3">
+              {filteredSkillsList.length === 0 ? (
+                <div className="p-8 text-center rounded-xl bg-white border border-slate-200 text-xs text-slate-400 italic">
+                  No skills found matching this filter or search query.
                 </div>
+              ) : (
+                filteredSkillsList.map((sk, idx) => {
+                  const isMissing = sk.type === 'missing'
+                  const isUpgrade = sk.type === 'upgrade'
+                  const isReady = sk.type === 'ready'
 
-                {/* Filter Pills with Simple English Labels */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setMissingSkillFilter('all')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                      missingSkillFilter === 'all'
-                        ? 'bg-rose-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-gray-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    All Skills to Learn ({missingSkills.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMissingSkillFilter('related')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
-                      missingSkillFilter === 'related'
-                        ? 'bg-sky-600 text-white shadow-xs'
-                        : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200'
-                    }`}
-                  >
-                    <span>🔗 Connected to Skills You Know ({missingSkillsStats.relatedCount})</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMissingSkillFilter('career')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
-                      missingSkillFilter === 'career'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
-                    }`}
-                  >
-                    <span>🎯 New Skills for this Job ({missingSkillsStats.careerCount})</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Skills Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredMissingSkills.length === 0 ? (
-                  <div className="col-span-2 text-xs text-gray-400 italic py-10 text-center bg-white rounded-2xl border border-gray-200">
-                    No skills matching this filter.
-                  </div>
-                ) : (
-                  filteredMissingSkills.map((sk, idx) => {
-                    const relation = getSkillRelation(sk)
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`p-4 rounded-2xl border space-y-2.5 text-xs transition-all shadow-xs ${
-                          relation.isRelated
-                            ? 'bg-sky-50/40 border-sky-200 border-l-4 border-l-sky-500'
-                            : 'bg-white border-gray-200 border-l-4 border-l-purple-500'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            <span className="font-bold text-gray-900 text-sm block">{sk.name}</span>
-                            {relation.isRelated ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-100/90 px-2 py-0.5 rounded">
-                                🔗 Connected to your {relation.relatedTo} skill
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-100/90 px-2 py-0.5 rounded">
-                                🎯 Required for {currentRole}
-                              </span>
-                            )}
-                          </div>
-
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 shrink-0">
-                            Goal: {sk.requiredLevel || 'Intermediate'}
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 transition-all shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      {/* Left: Skill Identity & Diagnostics */}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-bold text-slate-900">
+                            {sk.name}
                           </span>
+
+                          {/* Status Pill */}
+                          {isMissing && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+                              Missing Skill
+                            </span>
+                          )}
+                          {isUpgrade && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                              Upgrade Needed
+                            </span>
+                          )}
+                          {isReady && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <ShieldCheck className="w-3 h-3" />
+                              Job Ready
+                            </span>
+                          )}
+
+                          {/* Relation Tag for Missing Skills */}
+                          {isMissing && sk.relation?.isRelated && (
+                            <span className="text-[10px] font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                              Connected to {sk.relation.relatedTo}
+                            </span>
+                          )}
+
+                          {/* Priority Pill */}
+                          {sk.priority && (
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                sk.priority.toLowerCase() === 'high'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {sk.priority}
+                            </span>
+                          )}
                         </div>
 
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {relation.description || sk.reasoning || sk.importance || 'A valuable skill for your target role.'}
+                        {/* Concise Context / Rationale */}
+                        <p className="text-xs text-slate-500 leading-snug">
+                          {isMissing
+                            ? sk.relation?.description || sk.reasoning || sk.importance || 'Target role prerequisite.'
+                            : isUpgrade
+                            ? sk.gap || sk.reasoning || `Practice hands-on projects to reach ${sk.requiredLevel || 'Intermediate'}.`
+                            : sk.reasoning || 'Matches industry requirements for this role.'}
                         </p>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-150">
-                          <span className="text-[10px] font-bold text-gray-500">
-                            {relation.isRelated ? (
-                              <span className="text-sky-700">Easier to learn from your existing background</span>
-                            ) : (
-                              <span className="text-purple-700">New tool to start learning</span>
-                            )}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenSkillUpdate(sk.name, sk.requiredLevel || 'Intermediate')}
-                            className="text-xs font-bold text-emerald-800 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/90 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                          >
-                            <PlusCircle className="w-3.5 h-3.5" /> I Learned This
-                          </button>
-                        </div>
                       </div>
-                    )
-                  })
-                )}
+
+                      {/* Right: Progression Metrics & Direct Action */}
+                      <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                        {/* Target Progression Indicators */}
+                        {isUpgrade && (
+                          <div className="flex items-center gap-1.5 text-xs font-semibold">
+                            <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              {sk.currentLevel}
+                            </span>
+                            <span className="text-slate-300">&rarr;</span>
+                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                              {sk.requiredLevel || 'Intermediate'}
+                            </span>
+                          </div>
+                        )}
+
+                        {isMissing && (
+                          <div className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            Target: {sk.requiredLevel || 'Intermediate'}
+                          </div>
+                        )}
+
+                        {isReady && (
+                          <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                            {sk.currentLevel || 'Intermediate'}
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        {(isMissing || isUpgrade) && (
+                          <Button
+                            onClick={() => handleOpenSkillUpdate(sk.name, sk.requiredLevel || 'Intermediate')}
+                            variant="outline"
+                            className="text-xs font-medium border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-300 h-8 gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {isMissing ? 'I Know This' : 'Update Level'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          ) : (
+            /* ========================================================= */
+            /* 4. STRATEGIC ACTION PLAN & RECOMMENDATIONS                */
+            /* ========================================================= */
+            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <Lightbulb className="w-4 h-4 text-amber-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Recommended Sequence of Next Steps
+                </h3>
               </div>
 
-              {/* Bottom CTA to Roadmap */}
-              <div className="p-5 rounded-2xl bg-linear-to-r from-indigo-50/70 via-purple-50/40 to-white border border-indigo-150 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                    <BookOpen className="w-4.5 h-4.5" />
+              <div className="space-y-3">
+                {recommendedFocusAreas.map((area, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 text-xs text-slate-700"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-indigo-100 text-[#4F46E5] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <div className="space-y-1 flex-1">
+                      <p className="font-medium text-slate-900 leading-snug">{area}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-900">Ready to learn these skills step by step?</h4>
-                    <p className="text-[11px] text-gray-600">The AI Learning Roadmap gives you free study materials, code examples, and quizzes for each skill.</p>
-                  </div>
-                </div>
+                ))}
+              </div>
 
+              <div className="pt-2 flex justify-end">
                 <Button
                   onClick={() => navigate('/dashboard/learning-roadmap')}
-                  className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold px-4 py-2 rounded-xl gap-1.5 shadow-xs shrink-0 cursor-pointer"
+                  className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 h-9 cursor-pointer"
                 >
-                  Go to Roadmap <ArrowRight className="w-3.5 h-3.5" />
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Study in Learning Roadmap
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </div>
           )}
+
+          {/* Quick Bottom Roadmap Link Strip */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 text-slate-600">
+              <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>
+                Want to learn the missing skills step-by-step? Access interactive lessons and 12-question quizzes.
+              </span>
+            </div>
+            <Button
+              onClick={() => navigate('/dashboard/learning-roadmap')}
+              variant="outline"
+              className="text-xs font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50 gap-1.5 h-8 shrink-0 cursor-pointer"
+            >
+              Open Roadmap
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       )}
 
-      {/* MODAL: DIRECT USER SKILL UPDATE */}
+      {/* ========================================================= */}
+      {/* MODAL: DIRECT USER SKILL UPDATE (MINIMAL & SLEEK)          */}
+      {/* ========================================================= */}
       <Dialog open={skillModalOpen} onOpenChange={setSkillModalOpen}>
         <DialogContent className="max-w-md p-6">
           <DialogHeader>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold mb-1">
-              <GraduationCap className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-[#4F46E5] flex items-center justify-center font-bold mb-1">
+              <GraduationCap className="w-4.5 h-4.5" />
             </div>
-            <DialogTitle className="text-base font-bold text-gray-900">
-              Update Skill in Your Profile
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Update Skill Proficiency
             </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Confirm that you have learned this skill. It will be added to your profile and your Career Match score will improve immediately.
+            <DialogDescription className="text-xs text-slate-500">
+              Record your verified experience. This immediately updates your profile and recalibrates your match score.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">Skill Name</label>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Skill</label>
               <Input
                 type="text"
                 value={skillToUpdate}
                 onChange={(e) => setSkillToUpdate(e.target.value)}
-                className="text-xs h-9"
+                className="text-xs h-9 bg-slate-50 border-slate-200"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">Your Level in this Skill</label>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Select Current Level</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { key: 'Beginner', desc: 'Know the basics' },
+                  { key: 'Beginner', desc: 'Foundations & syntax' },
                   { key: 'Intermediate', desc: 'Can build projects' },
-                  { key: 'Advanced', desc: 'Experienced' },
+                  { key: 'Advanced', desc: 'Production-ready' },
                 ].map((item) => (
                   <button
                     key={item.key}
@@ -909,33 +846,37 @@ export default function SkillAnalysisPage() {
                     onClick={() => setSkillProficiency(item.key)}
                     className={`py-2 px-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                       skillProficiency === item.key
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'
+                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
                     <div className="text-xs font-bold">{item.key}</div>
-                    <div className="text-[10px] text-gray-500">{item.desc}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{item.desc}</div>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <DialogFooter className="mt-4 pt-3 border-t border-gray-200">
+          <DialogFooter className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setSkillModalOpen(false)}
-              className="text-xs cursor-pointer"
+              className="text-xs cursor-pointer h-9 border-slate-200"
             >
               Cancel
             </Button>
             <Button
               disabled={isUpdatingSkill}
               onClick={handleConfirmSkillUpdate}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer"
+              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 cursor-pointer h-9 shadow-xs"
             >
-              {isUpdatingSkill ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              Save Skill
+              {isUpdatingSkill ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              Save & Recalibrate
             </Button>
           </DialogFooter>
         </DialogContent>
