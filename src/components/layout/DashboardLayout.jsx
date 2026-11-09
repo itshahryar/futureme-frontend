@@ -192,14 +192,18 @@ export default function DashboardLayout() {
     : 'Home'
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'User'
 
-  if (isStudent && (loadingProfile || (profileData?.profile && !profileData.profile.isOnboarded) || (user && user.isOnboarded === false && !profileData?.profile?.isOnboarded))) {
+  const studentNotOnboarded =
+    isStudent &&
+    ((profileData?.profile && !profileData.profile.isOnboarded) ||
+      (user && user.isOnboarded === false && !profileData?.profile?.isOnboarded))
+
+  if (studentNotOnboarded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#4F46E5] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-slate-500 font-medium">Checking onboarding status...</p>
-        </div>
-      </div>
+      <Loading
+        variant="fullscreen"
+        message="Redirecting to onboarding..."
+        description="Please complete your student profile to access your dashboard."
+      />
     )
   }
 

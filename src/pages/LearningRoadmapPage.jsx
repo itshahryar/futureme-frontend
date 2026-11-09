@@ -54,6 +54,7 @@ import {
   Award,
   Clock,
   AlertCircle,
+  Lock,
 } from 'lucide-react'
 
 export default function LearningRoadmapPage() {
@@ -310,8 +311,64 @@ export default function LearningRoadmapPage() {
     }
   }
 
-  // Phase 6: Open Quiz / Assessment Modal
+  // Helper to check if all lessons (subtopics) for a topic are completed
+  const getTopicLessonProgress = (topic) => {
+    const subtopics = topic?.subtopics || []
+    if (subtopics.length === 0) return { total: 0, done: 0, isFinished: true }
+    let done = 0
+    subtopics.forEach((sub) => {
+      const isDone = optimisticOverrides[sub.id] !== undefined
+        ? optimisticOverrides[sub.id]
+        : Boolean(sub.isCompleted)
+      if (isDone) done++
+    })
+    return {
+      total: subtopics.length,
+      done,
+      isFinished: done === subtopics.length,
+    }
+  }
+
+  const isTopicLessonFinished = (topic) => {
+    return getTopicLessonProgress(topic).isFinished
+  }
+
+  // Action to mark all lessons/subtopics of a topic as completed
+  const handleMarkAllLessonsComplete = async (topic) => {
+    if (!learningPath?.id || !topic) return
+    const subtopics = topic.subtopics || []
+    if (subtopics.length === 0) return
+
+    const nextOverrides = {}
+    subtopics.forEach((sub) => {
+      nextOverrides[sub.id] = true
+    })
+    setOptimisticOverrides((prev) => ({ ...prev, ...nextOverrides }))
+
+    try {
+      await Promise.all(
+        subtopics.map((sub) =>
+          updateSubtopicStatus({
+            pathId: learningPath.id,
+            subtopicId: sub.id,
+            completed: true,
+          }).unwrap()
+        )
+      )
+      showToast(`All lessons for "${topic.title}" marked as complete! Quiz is now unlocked. 🎉`)
+    } catch (err) {
+      console.error('Failed to mark all subtopics complete:', err)
+    }
+  }
+
+  // Phase 6: Open Quiz / Assessment Modal (Allowed only when lesson is finished)
   const handleOpenQuiz = async (topic) => {
+    const { isFinished, done, total } = getTopicLessonProgress(topic)
+    if (!isFinished) {
+      showToast(`Please complete all lessons for "${topic?.title}" (${done}/${total} finished) before taking the quiz.`)
+      return
+    }
+
     setContentModalOpen(false)
     setActiveQuizTopic(topic)
     setQuizAnswers({})
@@ -919,14 +976,35 @@ export default function LearningRoadmapPage() {
                                   <BookOpen className="w-3 h-3" /> Learn & Resources
                                 </Button>
 
-                                {/* Topic Quiz */}
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleOpenQuiz(topic)}
-                                  className="h-7 text-[11px] px-2.5 font-semibold bg-[#4F46E5] hover:bg-[#4338CA] text-white gap-1 shadow-xs cursor-pointer"
-                                >
-                                  <HelpCircle className="w-3 h-3" /> Take Quiz
-                                </Button>
+                                {/* Topic Quiz (Unlocked only once lesson is finished) */}
+                                {(() => {
+                                  const { isFinished, done, total } = getTopicLessonProgress(topic)
+                                  if (isFinished) {
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleOpenQuiz(topic)}
+                                        className="h-7 text-[11px] px-2.5 font-semibold bg-[#4F46E5] hover:bg-[#4338CA] text-white gap-1 shadow-xs cursor-pointer"
+                                      >
+                                        <HelpCircle className="w-3 h-3" /> Take Quiz
+                                      </Button>
+                                    )
+                                  }
+                                  return (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setExpandedTopics((prev) => ({ ...prev, [topicKey]: true }))
+                                        showToast(`Complete all lessons (${done}/${total} finished) below to unlock the practice quiz.`)
+                                      }}
+                                      title={`Finish all lessons (${done}/${total} completed) to unlock this quiz`}
+                                      className="h-7 text-[11px] px-2.5 font-semibold text-gray-500 border-gray-200 bg-gray-50 hover:bg-gray-100 hover:text-gray-700 gap-1 cursor-pointer"
+                                    >
+                                      <Lock className="w-3 h-3 text-gray-400" /> Quiz Locked ({done}/{total})
+                                    </Button>
+                                  )
+                                })()}
 
                                 {/* Direct Skill Update */}
                                 <Button
@@ -1103,21 +1181,39 @@ export default function LearningRoadmapPage() {
                             Phase {topic.milestoneNumber} &bull; {topic.milestoneWeekRange || 'Milestone'}
                           </span>
 
-                          {hasTaken ? (
-                            passed ? (
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" /> Passed ({sub.score}%)
-                              </Badge>
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            {(() => {
+                              const { isFinished, done, total } = getTopicLessonProgress(topic)
+                              if (!isFinished) {
+                                return (
+                                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-semibold flex items-center gap-1">
+                                    <Lock className="w-2.5 h-2.5" /> Lessons: {done}/{total}
+                                  </Badge>
+                                )
+                              }
+                              return (
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" /> Lessons Finished
+                                </Badge>
+                              )
+                            })()}
+
+                            {hasTaken ? (
+                              passed ? (
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" /> Passed ({sub.score}%)
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" /> Score: {sub.score}% (Try again)
+                                </Badge>
+                              )
                             ) : (
-                              <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
-                                <AlertCircle className="w-3 h-3" /> Score: {sub.score}% (Try again)
+                              <Badge className="bg-gray-100 text-gray-600 border-0 text-[10px] shrink-0">
+                                Not taken yet
                               </Badge>
-                            )
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-600 border-0 text-[10px] shrink-0">
-                              Not taken yet
-                            </Badge>
-                          )}
+                            )}
+                          </div>
                         </div>
 
                         <h4 className="text-xs font-bold text-gray-900 leading-snug">
@@ -1149,19 +1245,45 @@ export default function LearningRoadmapPage() {
                           <BookOpen className="w-3.5 h-3.5" /> Review Lessons
                         </Button>
 
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenQuiz(topic)}
-                          variant={passed ? 'outline' : 'default'}
-                          className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs ${
-                            passed
-                              ? 'border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5]'
-                              : 'bg-[#4F46E5] hover:bg-[#4338CA] text-white'
-                          }`}
-                        >
-                          <HelpCircle className="w-3.5 h-3.5" />
-                          {hasTaken ? (passed ? 'Retake Quiz' : 'Try Again') : 'Take Quiz'}
-                        </Button>
+                        {(() => {
+                          const { isFinished, done, total } = getTopicLessonProgress(topic)
+
+                          if (!isFinished) {
+                            return (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedMilestoneFilter(topic.milestoneNumber)
+                                  setExpandedTopics((prev) => ({ ...prev, [topic.topicKey]: true }))
+                                  setActiveTab('curriculum')
+                                  showToast(`Complete all lessons for "${topic.title}" (${done}/${total} finished) to unlock this quiz.`)
+                                }}
+                                title={`Complete all lessons (${done}/${total}) to unlock this quiz`}
+                                className="h-8 text-xs font-semibold gap-1.5 cursor-pointer border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100"
+                              >
+                                <Lock className="w-3.5 h-3.5 text-amber-600" />
+                                Finish Lessons ({done}/{total})
+                              </Button>
+                            )
+                          }
+
+                          return (
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenQuiz(topic)}
+                              variant={passed ? 'outline' : 'default'}
+                              className={`h-8 text-xs font-semibold gap-1.5 cursor-pointer shadow-xs ${
+                                passed
+                                  ? 'border-gray-200 hover:border-indigo-300 hover:text-[#4F46E5]'
+                                  : 'bg-[#4F46E5] hover:bg-[#4338CA] text-white'
+                              }`}
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                              {hasTaken ? (passed ? 'Retake Quiz' : 'Try Again') : 'Take Quiz'}
+                            </Button>
+                          )
+                        })()}
                       </div>
                     </div>
                   )
@@ -1378,16 +1500,51 @@ export default function LearningRoadmapPage() {
             </div>
           )}
 
-          <DialogFooter className="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <DialogFooter className="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-[11px] text-gray-500">
-              Ready to verify this topic? Pass the quiz to upgrade your profile skill.
+              {(() => {
+                const { isFinished, done, total } = getTopicLessonProgress(activeContentTopic)
+                if (isFinished) {
+                  return 'Ready to verify this topic? Pass the quiz to upgrade your profile skill.'
+                }
+                return `Finish all lessons (${done}/${total} completed) to unlock the practice quiz.`
+              })()}
             </div>
-            <Button
-              onClick={() => handleOpenQuiz(activeContentTopic)}
-              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 cursor-pointer"
-            >
-              <HelpCircle className="w-3.5 h-3.5" /> Take Topic Quiz
-            </Button>
+
+            <div className="flex items-center gap-2">
+              {(() => {
+                const { isFinished, done, total } = getTopicLessonProgress(activeContentTopic)
+                if (isFinished) {
+                  return (
+                    <Button
+                      onClick={() => handleOpenQuiz(activeContentTopic)}
+                      className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold gap-1.5 cursor-pointer"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" /> Take Topic Quiz
+                    </Button>
+                  )
+                }
+
+                return (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleMarkAllLessonsComplete(activeContentTopic)}
+                      className="text-xs font-semibold text-emerald-700 border-emerald-300 hover:bg-emerald-50 gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5 text-emerald-600" /> Mark Lessons Finished
+                    </Button>
+                    <Button
+                      disabled
+                      className="bg-gray-100 text-gray-400 border border-gray-200 text-xs font-semibold gap-1.5 cursor-not-allowed"
+                    >
+                      <Lock className="w-3.5 h-3.5" /> Quiz Locked ({done}/{total})
+                    </Button>
+                  </>
+                )
+              })()}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1425,13 +1582,57 @@ export default function LearningRoadmapPage() {
           {quizData && !quizResult && (
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between text-xs text-gray-500 border-b border-gray-150 pb-2">
-                <span className="font-semibold text-gray-700">
-                  Question {quizCurrentIdx + 1} of {quizData.questions?.length || 0}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-800">
+                    Question {quizCurrentIdx + 1} of {quizData.questions?.length || 12}
+                  </span>
+                  {quizData.questions?.[quizCurrentIdx]?.difficulty && (
+                    <Badge
+                      className={`text-[10px] font-bold ${
+                        quizData.questions[quizCurrentIdx].difficulty.toLowerCase() === 'easy'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : quizData.questions[quizCurrentIdx].difficulty.toLowerCase() === 'medium'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
+                    >
+                      {quizData.questions[quizCurrentIdx].difficulty}
+                    </Badge>
+                  )}
+                </div>
                 <span className="text-[11px] text-indigo-600 font-medium">
-                  {Object.keys(quizAnswers).length} answered
+                  {Object.keys(quizAnswers).length} of {quizData.questions?.length || 12} answered
                 </span>
               </div>
+
+              {/* 12-Question Quick Jump Navigation Strip */}
+              {quizData.questions && quizData.questions.length > 0 && (
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 select-none">
+                  {quizData.questions.map((q, idx) => {
+                    const isAnswered = quizAnswers[q.id] !== undefined
+                    const isCurrent = quizCurrentIdx === idx
+                    const diff = q.difficulty || (idx < 4 ? 'Easy' : idx < 8 ? 'Medium' : 'Hard')
+
+                    return (
+                      <button
+                        key={q.id || idx}
+                        type="button"
+                        onClick={() => setQuizCurrentIdx(idx)}
+                        className={`w-7 h-7 rounded-lg text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                          isCurrent
+                            ? 'bg-[#4F46E5] text-white ring-2 ring-indigo-200 shadow-xs'
+                            : isAnswered
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                        title={`Question ${idx + 1} (${diff}) - ${isAnswered ? 'Answered' : 'Unanswered'}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
               {quizData.questions?.[quizCurrentIdx] && (
                 <div className="space-y-3">
@@ -1502,7 +1703,7 @@ export default function LearningRoadmapPage() {
                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer"
                   >
                     {isSubmittingAssessment ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    Submit Answers
+                    Submit Answers ({Object.keys(quizAnswers).length}/{quizData.questions?.length || 12})
                   </Button>
                 )}
               </div>
@@ -1554,29 +1755,46 @@ export default function LearningRoadmapPage() {
 
               <div className="space-y-3 pt-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                  Question Review & Explanations
+                  Question Review & Explanations ({quizResult.totalQuestions || 12} Questions)
                 </h4>
-                {(quizResult.results || []).map((r, rIdx) => (
-                  <div
-                    key={rIdx}
-                    className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
-                      r.isCorrect ? 'bg-emerald-50/40 border-emerald-200' : 'bg-rose-50/40 border-rose-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-bold text-gray-900">{r.question}</span>
-                      <Badge className={r.isCorrect ? 'bg-emerald-100 text-emerald-800 border-0' : 'bg-rose-100 text-rose-800 border-0'}>
-                        {r.isCorrect ? 'Correct' : 'Incorrect'}
-                      </Badge>
+                {(quizResult.results || []).map((r, rIdx) => {
+                  const diff = r.difficulty || (rIdx < 4 ? 'Easy' : rIdx < 8 ? 'Medium' : 'Hard')
+                  return (
+                    <div
+                      key={rIdx}
+                      className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                        r.isCorrect ? 'bg-emerald-50/40 border-emerald-200' : 'bg-rose-50/40 border-rose-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-500 text-[11px]">Q{rIdx + 1}</span>
+                          <Badge
+                            className={`text-[10px] font-bold ${
+                              diff.toLowerCase() === 'easy'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : diff.toLowerCase() === 'medium'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {diff}
+                          </Badge>
+                        </div>
+                        <Badge className={r.isCorrect ? 'bg-emerald-100 text-emerald-800 border-0 shrink-0' : 'bg-rose-100 text-rose-800 border-0 shrink-0'}>
+                          {r.isCorrect ? 'Correct' : 'Incorrect'}
+                        </Badge>
+                      </div>
+                      <p className="font-bold text-gray-900">{r.question}</p>
+                      {r.explanation && (
+                        <p className="text-[11px] text-gray-600 leading-snug pt-0.5">
+                          <span className="font-semibold text-gray-800">Explanation: </span>
+                          {r.explanation}
+                        </p>
+                      )}
                     </div>
-                    {r.explanation && (
-                      <p className="text-[11px] text-gray-600 leading-snug pt-0.5">
-                        <span className="font-semibold text-gray-800">Explanation: </span>
-                        {r.explanation}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <DialogFooter className="pt-2">
