@@ -55,6 +55,8 @@ import {
   ChevronRight,
   Compass,
   PlayCircle,
+  XCircle,
+  RotateCcw,
 } from 'lucide-react'
 
 export default function LearningRoadmapPage() {
@@ -82,6 +84,7 @@ export default function LearningRoadmapPage() {
   const [quizAnswers, setQuizAnswers] = useState({})
   const [quizCurrentIdx, setQuizCurrentIdx] = useState(0)
   const [quizResult, setQuizResult] = useState(null)
+  const [quizReviewFilter, setQuizReviewFilter] = useState('all') // 'all' | 'incorrect' | 'correct'
 
   // Skill Update Modal
   const [skillModalOpen, setSkillModalOpen] = useState(false)
@@ -336,6 +339,7 @@ export default function LearningRoadmapPage() {
     setQuizAnswers({})
     setQuizCurrentIdx(0)
     setQuizResult(null)
+    setQuizReviewFilter('all')
     setQuizModalOpen(true)
     setQuizData(null)
 
@@ -352,6 +356,14 @@ export default function LearningRoadmapPage() {
     } catch (err) {
       console.error('Failed to load quiz:', err)
     }
+  }
+
+  // Retake Quiz after reviewing
+  const handleRetakeQuiz = () => {
+    setQuizResult(null)
+    setQuizAnswers({})
+    setQuizCurrentIdx(0)
+    setQuizReviewFilter('all')
   }
 
   // Submit Quiz
@@ -1369,101 +1381,275 @@ export default function LearningRoadmapPage() {
           )}
 
           {/* Results View */}
-          {quizResult && (
-            <div className="space-y-4 pt-2">
-              <div className={`p-4 rounded-xl border text-center space-y-1.5 ${
-                quizResult.passed
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                  : 'bg-amber-50 border-amber-200 text-amber-950'
-              }`}>
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-2xs mx-auto">
-                  {quizResult.passed ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  )}
-                </div>
-                <h3 className="text-base font-bold">
-                  {quizResult.passed ? 'Quiz Passed! 🎉' : 'Quiz Completed'}
-                </h3>
-                <div className="text-xs">
-                  Your Score: <span className="font-bold">{quizResult.score}%</span> &bull; {quizResult.correctCount} of {quizResult.totalQuestions} correct
-                </div>
-              </div>
+          {quizResult && (() => {
+            const results = quizResult.results || []
+            const totalCount = results.length || quizResult.totalQuestions || 12
+            const correctCount = quizResult.correctCount !== undefined
+              ? quizResult.correctCount
+              : results.filter((r) => r.isCorrect).length
+            const incorrectCount = totalCount - correctCount
 
-              {quizResult.passed && (
-                <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-1.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                    <Sparkles className="w-4 h-4" /> Ready to Update Profile Skill
-                  </div>
-                  <p className="text-[11px] text-slate-300">
-                    Confirm your mastery in <span className="font-semibold text-white">{quizResult.skillName || activeQuizTopic?.title}</span> to upgrade your student profile score.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      handleOpenSkillUpdate(quizResult.skillName || activeQuizTopic?.title.split(' ')[0], 'Intermediate')
-                      setQuizModalOpen(false)
-                    }}
-                    className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold text-xs rounded-lg mt-1 cursor-pointer h-8"
-                  >
-                    Confirm & Update Profile Skill
-                  </Button>
-                </div>
-              )}
+            const filteredReviewResults = results.filter((r) => {
+              if (quizReviewFilter === 'incorrect') return !r.isCorrect
+              if (quizReviewFilter === 'correct') return r.isCorrect
+              return true
+            })
 
-              {/* Explanations */}
-              <div className="space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Question Review ({quizResult.totalQuestions || 12} Questions)
-                </h4>
-                {(quizResult.results || []).map((r, rIdx) => {
-                  const diff = r.difficulty || (rIdx < 4 ? 'Easy' : rIdx < 8 ? 'Medium' : 'Hard')
-                  return (
-                    <div
-                      key={rIdx}
-                      className={`p-3 rounded-xl border text-xs space-y-1 ${
-                        r.isCorrect ? 'bg-emerald-50/40 border-emerald-200' : 'bg-rose-50/40 border-rose-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-500 text-[10px]">Q{rIdx + 1}</span>
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
-                            diff.toLowerCase() === 'easy'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : diff.toLowerCase() === 'medium'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}>
-                            {diff}
-                          </span>
-                        </div>
-                        <span className={`text-[10px] font-bold ${r.isCorrect ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {r.isCorrect ? 'Correct' : 'Incorrect'}
-                        </span>
-                      </div>
-                      <p className="font-semibold text-slate-900 leading-snug">{r.question}</p>
-                      {r.explanation && (
-                        <p className="text-[11px] text-slate-600 leading-snug pt-0.5">
-                          <span className="font-medium text-slate-700">Explanation: </span>
-                          {r.explanation}
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
-              <DialogFooter className="pt-2">
-                <Button
-                  onClick={() => setQuizModalOpen(false)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer w-full sm:w-auto h-8"
+            return (
+              <div className="space-y-4 pt-2">
+                {/* Score Summary Banner */}
+                <div
+                  className={`p-4 rounded-xl border text-center space-y-1.5 ${
+                    quizResult.passed
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                      : 'bg-amber-50 border-amber-200 text-amber-950'
+                  }`}
                 >
-                  Close & Continue
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-2xs mx-auto">
+                    {quizResult.passed ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                    )}
+                  </div>
+                  <h3 className="text-base font-bold">
+                    {quizResult.passed ? 'Quiz Passed! 🎉' : 'Quiz Completed'}
+                  </h3>
+                  <div className="text-xs">
+                    Your Score: <span className="font-bold">{quizResult.score}%</span> &bull; {correctCount} of {totalCount} correct ({incorrectCount} wrong)
+                  </div>
+                </div>
+
+                {/* Skill Upgrade CTA when passed */}
+                {quizResult.passed && (
+                  <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-1.5 shadow-sm">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                      <Sparkles className="w-4 h-4" /> Ready to Update Profile Skill
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Confirm your mastery in <span className="font-semibold text-white">{quizResult.skillName || activeQuizTopic?.title}</span> to upgrade your student profile score.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        handleOpenSkillUpdate(quizResult.skillName || activeQuizTopic?.title.split(' ')[0], 'Intermediate')
+                        setQuizModalOpen(false)
+                      }}
+                      className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold text-xs rounded-lg mt-1 cursor-pointer h-8"
+                    >
+                      Confirm & Update Profile Skill
+                    </Button>
+                  </div>
+                )}
+
+                {/* Question Review Header & Filter Controls */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                        Detailed Question Review
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Check what you selected against the correct options and explanations.
+                      </p>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setQuizReviewFilter('all')}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                          quizReviewFilter === 'all'
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+                        }`}
+                      >
+                        All ({totalCount})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setQuizReviewFilter('incorrect')}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                          quizReviewFilter === 'incorrect'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/60'
+                        }`}
+                      >
+                        <XCircle className="w-3 h-3" />
+                        Wrong ({incorrectCount})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setQuizReviewFilter('correct')}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                          quizReviewFilter === 'correct'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        Correct ({correctCount})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Question Cards List */}
+                  <div className="space-y-3 max-h-[46vh] overflow-y-auto pr-1">
+                    {filteredReviewResults.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400 italic bg-slate-50 rounded-xl border border-slate-200">
+                        No questions in this filter view.
+                      </div>
+                    ) : (
+                      filteredReviewResults.map((r, rIdx) => {
+                        const originalIndex = results.findIndex((item) => item.id === r.id)
+                        const questionNum = originalIndex !== -1 ? originalIndex + 1 : rIdx + 1
+                        const diff = r.difficulty || (questionNum <= 4 ? 'Easy' : questionNum <= 8 ? 'Medium' : 'Hard')
+
+                        const matchedQuestion = quizData?.questions?.find((q) => q.id === r.id) || quizData?.questions?.[questionNum - 1]
+                        const options = (r.options && r.options.length > 0) ? r.options : (matchedQuestion?.options || [])
+                        const selectedIdx = r.selectedOption !== undefined && r.selectedOption !== null
+                          ? r.selectedOption
+                          : (matchedQuestion?.id ? quizAnswers[matchedQuestion.id] : undefined)
+                        const correctIdx = r.correctOption !== undefined && r.correctOption !== null
+                          ? r.correctOption
+                          : matchedQuestion?.correctIndex
+
+                        const selectedLetter = selectedIdx !== undefined && selectedIdx !== null ? String.fromCharCode(65 + Number(selectedIdx)) : null
+                        const correctLetter = correctIdx !== undefined && correctIdx !== null ? String.fromCharCode(65 + Number(correctIdx)) : null
+
+                        const selectedText = selectedIdx !== undefined && options[selectedIdx] ? options[selectedIdx] : null
+                        const correctText = correctIdx !== undefined && options[correctIdx] ? options[correctIdx] : null
+
+                        return (
+                          <div
+                            key={r.id || rIdx}
+                            className={`p-3.5 sm:p-4 rounded-xl border text-xs space-y-2.5 transition-all shadow-2xs ${
+                              r.isCorrect
+                                ? 'bg-emerald-50/20 border-emerald-200'
+                                : 'bg-rose-50/20 border-rose-200'
+                            }`}
+                          >
+                            {/* Card Header */}
+                            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-700 text-xs">
+                                  Question {questionNum}
+                                </span>
+                                <span className="text-slate-300">&bull;</span>
+                                <span
+                                  className={`text-[10px] font-semibold px-2 py-0.2 rounded ${
+                                    diff.toLowerCase() === 'easy'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : diff.toLowerCase() === 'medium'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-rose-100 text-rose-800'
+                                  }`}
+                                >
+                                  {diff}
+                                </span>
+                              </div>
+
+                              {r.isCorrect ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  Correct
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-md">
+                                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                  Wrong
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Question text */}
+                            <p className="font-semibold text-slate-900 leading-snug">
+                              {r.question}
+                            </p>
+
+                            {/* Comparison: What User Selected vs What is Correct */}
+                            {r.isCorrect ? (
+                              <div className="p-2.5 rounded-lg bg-emerald-50/90 border border-emerald-200 text-xs flex items-start gap-2.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                <div className="space-y-0.5 flex-1 min-w-0">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                                    Your Answer (Correct):
+                                  </span>
+                                  <span className="font-semibold text-emerald-950">
+                                    {correctLetter ? `(${correctLetter}) ` : ''}{correctText || 'Correct answer recorded'}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {/* What User Selected (Wrong) */}
+                                <div className="p-2.5 rounded-lg bg-rose-50/90 border border-rose-200 text-xs flex items-start gap-2.5">
+                                  <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                  <div className="space-y-0.5 flex-1 min-w-0">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800 block">
+                                      Your Selection:
+                                    </span>
+                                    <span className="font-semibold text-rose-950">
+                                      {selectedText
+                                        ? `(${selectedLetter}) ${selectedText}`
+                                        : 'No option chosen'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Correct Option */}
+                                <div className="p-2.5 rounded-lg bg-emerald-50/90 border border-emerald-200 text-xs flex items-start gap-2.5">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                  <div className="space-y-0.5 flex-1 min-w-0">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                                      Correct Option:
+                                    </span>
+                                    <span className="font-semibold text-emerald-950">
+                                      {correctLetter ? `(${correctLetter}) ` : ''}{correctText || 'Correct option'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Explanation */}
+                            {r.explanation && (
+                              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 leading-relaxed">
+                                <span className="font-bold text-slate-700">Explanation: </span>
+                                {r.explanation}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Controls */}
+                <DialogFooter className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-slate-100">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRetakeQuiz}
+                    className="text-xs font-semibold border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-300 gap-1.5 h-8 w-full sm:w-auto cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Retake Quiz
+                  </Button>
+
+                  <Button
+                    onClick={() => setQuizModalOpen(false)}
+                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer w-full sm:w-auto h-8"
+                  >
+                    Close & Continue
+                  </Button>
+                </DialogFooter>
+              </div>
+            )
+          })()}
         </DialogContent>
       </Dialog>
 
