@@ -232,3 +232,157 @@ option:checked {
   background-color: #EEF2FF !important;
   color: #4F46E5 !important;
 }
+
+/* ========================================================
+   Interactive 3D Illustrative Design System Utilities
+   ======================================================== */
+
+@keyframes floatKeyframes {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(var(--float-amp, -8px)) rotate(var(--float-rot, 2.5deg));
+  }
+}
+
+@keyframes pulse3dGlow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Subtle, performant GPU-accelerated 3D motion utilities */
+.animate-float-slow {
+  animation: floatKeyframes 4s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.animate-float-delayed {
+  animation: floatKeyframes 4.8s ease-in-out 1.2s infinite alternate;
+  will-change: transform;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 22s linear infinite;
+  will-change: transform;
+}
+
+.animate-pulse-glow {
+  animation: pulse3dGlow 3.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-800 {
+  perspective: 800px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.translate-z-10 {
+  transform: translateZ(10px);
+}
+
+.translate-z-20 {
+  transform: translateZ(20px);
+}
+
+.translate-z-30 {
+  transform: translateZ(30px);
+}
+
+/* Compact Bento Card Architecture */
+.bento-card {
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 4px 12px 0 rgba(15, 23, 42, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-card:hover {
+  border-color: rgba(199, 210, 254, 0.8);
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.04), 0 10px 24px -3px rgba(79, 70, 229, 0.08);
+}
+
+.bento-card-interactive {
+  cursor: pointer !important;
+}
+
+.bento-card-interactive:hover {
+  transform: translateY(-2px);
+}
+
+.card-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Tactile 3D Badges */
+.badge-3d {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Custom sleek scrollbar for code and scrollable containers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

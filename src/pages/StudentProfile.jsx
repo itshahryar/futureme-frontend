@@ -41,6 +41,10 @@ import {
   GitBranch,
   Target,
 } from 'lucide-react'
+import {
+  Card3DTilt,
+  RealisticTrophyMastery,
+} from '@/components/illustrations3d'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -599,59 +603,64 @@ export default function StudentProfile() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-5 max-w-5xl pb-16">
       {/* Notifications */}
       {successMsg && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
       {errorMsg && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* Profile Header Hero Card */}
-      <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-[#4F46E5] to-[#7C3AED] flex items-center justify-center text-white text-xl font-bold shadow-md shadow-indigo-100 shrink-0">
-            {initials}
+      <div className="bento-card p-3 sm:p-3.5 rounded-xl bg-linear-to-br from-indigo-50/50 via-white to-purple-50/30 flex flex-col md:flex-row md:items-center justify-between gap-3 overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 rounded-lg bg-linear-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-indigo-500/15 shrink-0">
+              {initials}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
           </div>
+
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-gray-900">
-                {user.fullName || [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Student User'}
+              <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                {user.fullName || [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Student Explorer'}
               </h1>
-              <Badge
-                className={
+              <span
+                className={`text-[10.5px] font-medium px-2 py-0.5 rounded-full ${
                   profile.isOnboarded
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]'
-                    : 'bg-amber-50 text-amber-700 border-amber-200 text-[10px]'
-                }
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}
               >
-                {profile.isOnboarded ? 'Onboarding Completed' : 'Onboarding In Progress'}
-              </Badge>
+                {profile.isOnboarded ? 'Profile Active' : 'Setup In Progress'}
+              </span>
             </div>
-            <p className="text-xs text-gray-600 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5 font-normal">
               {profile.degree || profile.currentDegree || 'Student'} &bull; {profile.school || profile.university || 'University'}
             </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{user.email}</p>
+            <p className="text-[10px] text-slate-400">{user.email}</p>
           </div>
         </div>
 
-        {/* Completion Gauge */}
-        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+        {/* Profile Strength Gauge with 3D Trophy Accent */}
+        <div className="flex items-center gap-2.5 bg-slate-50/90 p-2 sm:p-2.5 rounded-lg border border-slate-150 self-start md:self-auto">
+          <RealisticTrophyMastery className="w-9 h-9 shrink-0 animate-float-slow hidden sm:block" size={36} />
           <div>
-            <div className="flex items-center justify-between text-xs font-semibold text-gray-700 gap-4">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 gap-3">
               <span>Profile Strength</span>
-              <span className="text-[#4F46E5] font-bold">{completionPercentage}%</span>
+              <span className="text-indigo-600 font-bold">{completionPercentage}%</span>
             </div>
-            <div className="w-36 h-2 bg-gray-200 rounded-full overflow-hidden mt-1.5">
+            <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
               <div
-                className="h-full bg-[#4F46E5] transition-all duration-500"
+                className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-600 transition-all duration-500"
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
@@ -660,100 +669,100 @@ export default function StudentProfile() {
             <Button
               size="sm"
               onClick={() => navigate('/onboarding')}
-              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs gap-1.5 rounded-lg"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold gap-1 rounded-lg cursor-pointer h-7 px-2"
             >
-              Resume Wizard <ArrowRight className="w-3.5 h-3.5" />
+              Resume <ArrowRight className="w-3 h-3" />
             </Button>
           )}
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-gray-200 gap-2 overflow-x-auto">
+      {/* Modern Bento Tabs Navigation */}
+      <div className="flex border-b border-slate-200 gap-1.5 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 whitespace-nowrap border-b-2 transition-all ${
+          className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'overview'
-              ? 'border-[#4F46E5] text-[#4F46E5]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'bg-violet-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <User className="w-4 h-4" />
+          <User className="w-3.5 h-3.5" />
           Overview & Bio
         </button>
         <button
           onClick={() => setActiveTab('academic')}
-          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 whitespace-nowrap border-b-2 transition-all ${
+          className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'academic'
-              ? 'border-[#4F46E5] text-[#4F46E5]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'bg-violet-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <GraduationCap className="w-4 h-4" />
+          <GraduationCap className="w-3.5 h-3.5" />
           Academic & Contact
         </button>
         <button
           onClick={() => setActiveTab('skills')}
-          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 whitespace-nowrap border-b-2 transition-all ${
+          className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'skills'
-              ? 'border-[#4F46E5] text-[#4F46E5]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'bg-violet-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-3.5 h-3.5" />
           Skills ({selectedSkills.length})
         </button>
         <button
           onClick={() => setActiveTab('projects')}
-          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 whitespace-nowrap border-b-2 transition-all ${
+          className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'projects'
-              ? 'border-[#4F46E5] text-[#4F46E5]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'bg-violet-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <Briefcase className="w-4 h-4" />
+          <Briefcase className="w-3.5 h-3.5" />
           Projects & Experience ({projects.length + experiences.length + certifications.length})
         </button>
         <button
           onClick={() => setActiveTab('interests')}
-          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 whitespace-nowrap border-b-2 transition-all ${
+          className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'interests'
-              ? 'border-[#4F46E5] text-[#4F46E5]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'bg-violet-500 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <Heart className="w-4 h-4" />
+          <Heart className="w-3.5 h-3.5" />
           Preferences & Goals
         </button>
       </div>
 
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Bio & Headline card */}
-          <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-4">
+          <div className="p-4 sm:p-4.5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-3">
             {profile.headline ? (
-              <div className="pb-3 border-b border-gray-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Headline</span>
-                <p className="text-sm font-semibold text-gray-900 mt-0.5">{profile.headline}</p>
+              <div className="pb-2.5 border-b border-gray-100">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">Headline</span>
+                <p className="text-xs font-semibold text-gray-900 mt-0.5">{profile.headline}</p>
               </div>
             ) : null}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">About Me</h3>
-              <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">About Me</h3>
+              <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line font-normal">
                 {profile.bio || 'No bio set yet. Head to "Academic & Contact" tab to introduce yourself and set your bio.'}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {/* Quick Academic Summary */}
-            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
+            <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs space-y-2.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-[#4F46E5]" />
                 Academic Background
               </h3>
-              <div className="text-xs space-y-2">
+              <div className="text-xs space-y-1.5 font-normal">
                 <p>
                   <span className="font-semibold text-gray-700">School:</span> {profile.school || profile.university || 'Not set'}
                 </p>
@@ -786,28 +795,28 @@ export default function StudentProfile() {
             </div>
 
             {/* Quick Skills Summary */}
-            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-3">
+            <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[#4F46E5]" />
                   Skills ({selectedSkills.length})
                 </h3>
                 <button
                   onClick={() => setActiveTab('skills')}
-                  className="text-[11px] font-semibold text-[#4F46E5] hover:underline"
+                  className="text-xs font-medium text-[#4F46E5] hover:underline cursor-pointer"
                 >
                   Manage
                 </button>
               </div>
               {selectedSkills.length === 0 ? (
-                <p className="text-xs text-gray-400">No skills added yet.</p>
+                <p className="text-xs text-gray-400 font-normal">No skills added yet.</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {selectedSkills.map((sk) => (
                     <Badge
                       key={sk.name}
                       variant="secondary"
-                      className="text-[11px] bg-indigo-50 text-[#4F46E5] border border-indigo-100"
+                      className="text-xs bg-indigo-50 text-[#4F46E5] border border-indigo-100 font-normal"
                     >
                       {sk.name} &bull; <span className="opacity-75">{sk.proficiency}</span>
                     </Badge>
@@ -817,16 +826,16 @@ export default function StudentProfile() {
             </div>
           </div>
 
-          {/* Preferences & Target Careers Card (With Primary & Secondary Badges) */}
-          <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-4">
+          {/* Preferences & Target Careers Card */}
+          <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
                 <Target className="w-4 h-4 text-[#4F46E5]" />
                 Career Preferences & Goals
               </h3>
               <button
                 onClick={() => setActiveTab('interests')}
-                className="text-[11px] font-semibold text-[#4F46E5] hover:underline"
+                className="text-xs font-medium text-[#4F46E5] hover:underline cursor-pointer"
               >
                 Edit Goals
               </button>
@@ -934,7 +943,7 @@ export default function StudentProfile() {
 
       {/* TAB 2: ACADEMIC & CONTACT FORM */}
       {activeTab === 'academic' && (
-        <form onSubmit={handleSaveProfile} className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-5">
+        <form onSubmit={handleSaveProfile} className="p-4 sm:p-5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-gray-700">First Name</label>
@@ -1125,7 +1134,7 @@ export default function StudentProfile() {
 
       {/* TAB 3: SKILLS MANAGEMENT (CLEAN, MINIMAL, WITH SAVE BUTTON) */}
       {activeTab === 'skills' && (
-        <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-6">
+        <div className="p-4 sm:p-5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-gray-100">
             <div>
@@ -1315,9 +1324,9 @@ export default function StudentProfile() {
 
       {/* TAB 4: PROJECTS, EXPERIENCE & CERTIFICATIONS */}
       {activeTab === 'projects' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* --- 1. Portfolio Projects --- */}
-          <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-4">
+          <div className="p-4 sm:p-5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Portfolio Projects</h3>
@@ -1434,7 +1443,7 @@ export default function StudentProfile() {
           </div>
 
           {/* --- 2. Work Experience & Internships --- */}
-          <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-4">
+          <div className="p-4 sm:p-5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Work Experience & Internships</h3>
@@ -1531,7 +1540,7 @@ export default function StudentProfile() {
           </div>
 
           {/* --- 3. Certifications & Achievements --- */}
-          <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-4">
+          <div className="p-4 sm:p-5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Certifications & Achievements</h3>
@@ -1640,7 +1649,7 @@ export default function StudentProfile() {
 
       {/* TAB 5: PREFERENCES & GOALS (PRIMARY & SECONDARY + AT MOST 3) */}
       {activeTab === 'interests' && (
-        <form onSubmit={handleSavePreferences} className="p-6 bg-white rounded-2xl border border-gray-200 shadow-xs space-y-6">
+        <form onSubmit={handleSavePreferences} className="p-4 sm:p-5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-4">
           {/* 1. Work Preferences (Primary & Secondary) */}
           <div className="space-y-3 p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80">
             <div className="flex items-center justify-between">

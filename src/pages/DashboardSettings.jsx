@@ -2,17 +2,11 @@ import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectCurrentUser, setCredentials } from '@/store/slices/authSlice'
 import { useUpdateProfileMutation, useChangePasswordMutation } from '@/store/api/authApiSlice'
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { User, CheckCircle2, AlertCircle, Lock, KeyRound, Eye, EyeOff, Settings } from 'lucide-react'
+import { Card3DTilt } from '@/components/illustrations3d'
+import { User, CheckCircle2, AlertCircle, Lock, KeyRound, Eye, EyeOff, Settings, ShieldCheck } from 'lucide-react'
 
 export default function DashboardSettings() {
   const dispatch = useDispatch()
@@ -20,7 +14,6 @@ export default function DashboardSettings() {
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation()
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation()
 
-  // Parse full name into first and last name
   const parseNames = (fullName = '') => {
     const parts = (fullName || '').trim().split(' ')
     const firstName = parts[0] || ''
@@ -32,7 +25,6 @@ export default function DashboardSettings() {
   const [lastName, setLastName] = useState('')
   const [feedback, setFeedback] = useState({ type: '', text: '' })
 
-  // Change password states
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -41,7 +33,6 @@ export default function DashboardSettings() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordFeedback, setPasswordFeedback] = useState({ type: '', text: '' })
 
-  // Synchronize local form state with user data
   useEffect(() => {
     if (user) {
       if (user.firstName !== undefined || user.lastName !== undefined) {
@@ -123,277 +114,260 @@ export default function DashboardSettings() {
   }
 
   return (
-    <div className="space-y-5">
-      
+    <div className="space-y-5 max-w-5xl pb-16">
       {/* Page Header */}
       <div>
         <h1 className="page-title flex items-center gap-2">
-          <Settings className="w-5 h-5 text-[#4F46E5]" />
+          <Settings className="w-5 h-5 text-indigo-600" />
           Account Settings
         </h1>
         <p className="page-subtitle mt-1">
-          Manage your personal details and account security.
+          Manage your personal identity, contact credentials, and account security.
         </p>
       </div>
 
-      {/* Profile Overview Card */}
-      <Card className="rounded-xl border-[#E5E7EB] shadow-xs bg-white">
-        <CardHeader className="p-4 sm:p-5 border-b border-[#E5E7EB]">
-          <div>
-            <CardTitle className="section-title flex items-center gap-2">
-              <User className="w-4 h-4 text-[#111827]" />
-              Profile Information
-            </CardTitle>
-            <CardDescription className="section-desc mt-0.5">
-              Update your personal details.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        
-        <form onSubmit={handleSave}>
-          <CardContent className="p-4 sm:p-5 space-y-4">
-            
-            {/* Feedback Alert */}
-            {feedback.text && (
-              <div
-                className={`flex items-center gap-2 p-2.5 rounded-lg text-xs border ${
-                  feedback.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-red-50 text-red-700 border-red-200'
-                }`}
-              >
-                {feedback.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                )}
-                <span>{feedback.text}</span>
-              </div>
-            )}
-
-            {/* Profile Fields Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              
-              {/* First Name (Editable) */}
-              <div className="space-y-1">
-                <Label htmlFor="firstName" className="field-label">
-                  First Name <span className="text-[#DC2626]">*</span>
-                </Label>
-                <Input
-                  id="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="First name"
-                  className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
-                  required
-                />
-              </div>
-
-              {/* Last Name (Editable) */}
-              <div className="space-y-1">
-                <Label htmlFor="lastName" className="field-label">
-                  Last Name
-                </Label>
-                <Input
-                  id="lastName"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Last name"
-                  className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
-                />
-              </div>
-
-              {/* Email Address (Read-Only) */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="email" className="field-label">
-                    Email Address
-                  </Label>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[#6B7280] font-normal">
-                    <Lock className="w-2.5 h-2.5" /> Read-only
-                  </span>
+      <div className="grid grid-cols-1 gap-4 max-w-3xl">
+        {/* Profile Information Bento Card */}
+        <Card3DTilt maxTilt={2}>
+          <div className="bento-card p-4 sm:p-4.5 space-y-3.5 rounded-xl">
+            <div className="flex items-center justify-between border-b border-slate-150 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                  <User className="w-4 h-4" />
                 </div>
-                <Input
-                  id="email"
-                  value={user?.email || ''}
-                  readOnly
-                  disabled
-                  className="h-8 text-xs bg-[#F8FAFC] text-[#6B7280] cursor-not-allowed border-[#E5E7EB]"
-                />
-              </div>
-
-              {/* Role (Read-Only) */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="role" className="field-label">
-                    Role
-                  </Label>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[#6B7280] font-normal">
-                    <Lock className="w-2.5 h-2.5" /> Read-only
-                  </span>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900">Profile Information</h2>
+                  <p className="text-[11px] text-slate-500">Update your name and primary details.</p>
                 </div>
-                <Input
-                  id="role"
-                  value={user?.role || ''}
-                  readOnly
-                  disabled
-                  className="h-8 text-xs bg-[#F8FAFC] text-[#6B7280] cursor-not-allowed border-[#E5E7EB]"
-                />
               </div>
-
+              <span className="badge-3d px-2 py-0.5 text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200">
+                {user?.role || 'User'}
+              </span>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-end">
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isUpdating}
-                className="h-8 text-xs px-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium cursor-pointer shrink-0 transition-colors"
-              >
-                {isUpdating ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
+            <form onSubmit={handleSave} className="space-y-3">
+              {feedback.text && (
+                <div
+                  className={`flex items-center gap-2 p-2.5 rounded-lg text-xs border ${
+                    feedback.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}
+                >
+                  {feedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{feedback.text}</span>
+                </div>
+              )}
 
-          </CardContent>
-        </form>
-      </Card>
-
-      {/* Change Password Card */}
-      <Card className="rounded-xl border-[#E5E7EB] shadow-xs bg-white">
-        <CardHeader className="p-4 sm:p-5 border-b border-[#E5E7EB]">
-          <div>
-            <CardTitle className="section-title flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-[#111827]" />
-              Change Password
-            </CardTitle>
-            <CardDescription className="section-desc mt-0.5">
-              Update your password to keep your account secure.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        
-        <form onSubmit={handlePasswordSubmit}>
-          <CardContent className="p-4 sm:p-5 space-y-4">
-            
-            {/* Feedback Alert */}
-            {passwordFeedback.text && (
-              <div
-                className={`flex items-center gap-2 p-2.5 rounded-lg text-xs border ${
-                  passwordFeedback.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-red-50 text-red-700 border-red-200'
-                }`}
-              >
-                {passwordFeedback.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                )}
-                <span>{passwordFeedback.text}</span>
-              </div>
-            )}
-
-            {/* Password Fields Grid */}
-            <div className="space-y-3.5">
-              
-              {/* Current Password */}
-              <div className="space-y-1">
-                <Label htmlFor="currentPassword" className="field-label">
-                  Current Password <span className="text-[#DC2626]">*</span>
-                </Label>
-                <div className="relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="firstName" className="text-[11px] font-semibold text-slate-700">
+                    First Name <span className="text-rose-500">*</span>
+                  </Label>
                   <Input
-                    id="currentPassword"
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] pr-8"
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
+                    className="h-8.5 text-xs bg-slate-50 border-slate-200 focus:bg-white rounded-lg"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-2.5 top-2 text-[#6B7280] hover:text-[#111827] cursor-pointer"
-                    aria-label={showCurrentPassword ? "Hide password" : "Show password"}
-                  >
-                    {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="lastName" className="text-[11px] font-semibold text-slate-700">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
+                    className="h-8.5 text-xs bg-slate-50 border-slate-200 focus:bg-white rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="email" className="text-[11px] font-semibold text-slate-700">
+                      Email Address
+                    </Label>
+                    <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-400">
+                      <Lock className="w-2.5 h-2.5" /> Read-only
+                    </span>
+                  </div>
+                  <Input
+                    id="email"
+                    value={user?.email || ''}
+                    readOnly
+                    disabled
+                    className="h-8.5 text-xs bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200 rounded-lg"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="role" className="text-[11px] font-semibold text-slate-700">
+                      System Role
+                    </Label>
+                    <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-400">
+                      <Lock className="w-2.5 h-2.5" /> Read-only
+                    </span>
+                  </div>
+                  <Input
+                    id="role"
+                    value={user?.role || ''}
+                    readOnly
+                    disabled
+                    className="h-8.5 text-xs bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200 rounded-lg"
+                  />
                 </div>
               </div>
 
-              {/* New Password & Confirm New Password Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="pt-2 border-t border-slate-100 flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isUpdating}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg h-7.5 px-3.5 cursor-pointer shadow-xs"
+                >
+                  {isUpdating ? 'Saving Changes...' : 'Save Profile Details'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Card3DTilt>
+
+        {/* Account Password & Security Bento Card */}
+        <Card3DTilt maxTilt={2}>
+          <div className="bento-card p-4 sm:p-4.5 space-y-3.5 rounded-xl">
+            <div className="flex items-center justify-between border-b border-slate-150 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900">Account Security</h2>
+                  <p className="text-[11px] text-slate-500">Update your access password and review security.</p>
+                </div>
+              </div>
+              <span className="badge-3d px-2 py-0.5 text-[9.5px] bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <ShieldCheck className="w-3 h-3 mr-1" /> HTTP-Only Cookies
+              </span>
+            </div>
+
+            <form onSubmit={handlePasswordSubmit} className="space-y-3">
+              {passwordFeedback.text && (
+                <div
+                  className={`flex items-center gap-2 p-2.5 rounded-lg text-xs border ${
+                    passwordFeedback.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}
+                >
+                  {passwordFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{passwordFeedback.text}</span>
+                </div>
+              )}
+
+              <div className="space-y-2.5">
                 <div className="space-y-1">
-                  <Label htmlFor="newPassword" className="field-label">
-                    New Password <span className="text-[#DC2626]">*</span>
+                  <Label htmlFor="currentPassword" className="text-[11px] font-semibold text-slate-700">
+                    Current Password
                   </Label>
                   <div className="relative">
                     <Input
-                      id="newPassword"
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="At least 6 characters"
-                      className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] pr-8"
+                      id="currentPassword"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="h-8.5 text-xs bg-slate-50 border-slate-200 focus:bg-white rounded-lg pr-9"
                       required
                     />
                     <button
                       type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-2.5 top-2 text-[#6B7280] hover:text-[#111827] cursor-pointer"
-                      aria-label={showNewPassword ? "Hide password" : "Show password"}
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 cursor-pointer"
                     >
-                      {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="confirmPassword" className="field-label">
-                    Confirm New Password <span className="text-[#DC2626]">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Repeat new password"
-                      className="h-8 text-xs bg-white text-[#111827] border-[#E5E7EB] focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] pr-8"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-2.5 top-2 text-[#6B7280] hover:text-[#111827] cursor-pointer"
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="newPassword" className="text-[11px] font-semibold text-slate-700">
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="h-8.5 text-xs bg-slate-50 border-slate-200 focus:bg-white rounded-lg pr-9"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      >
+                        {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="confirmPassword" className="text-[11px] font-semibold text-slate-700">
+                      Confirm New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="h-8.5 text-xs bg-slate-50 border-slate-200 focus:bg-white rounded-lg pr-9"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
 
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-end">
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isChangingPassword}
-                className="h-8 text-xs px-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium cursor-pointer shrink-0 transition-colors"
-              >
-                {isChangingPassword ? 'Updating...' : 'Update Password'}
-              </Button>
-            </div>
-
-          </CardContent>
-        </form>
-      </Card>
-
+              <div className="pt-2 border-t border-slate-100 flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isChangingPassword}
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg h-7.5 px-3.5 cursor-pointer shadow-xs"
+                >
+                  {isChangingPassword ? 'Updating Password...' : 'Change Password'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Card3DTilt>
+      </div>
     </div>
   )
 }

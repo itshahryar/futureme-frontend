@@ -35,6 +35,13 @@ import {
   Calendar,
   Award,
 } from 'lucide-react'
+import {
+  OnboardingRocket3D,
+  TrophyMastery3D,
+  Card3DTilt,
+  Floating3DObject,
+} from '@/components/illustrations3d'
+import confetti from 'canvas-confetti'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -497,55 +504,69 @@ export default function Onboarding() {
 
   // Celebration Completion View
   if (isCompleted) {
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 80,
+        origin: { y: 0.5 },
+        colors: ['#4F46E5', '#38BDF8', '#F59E0B', '#10B981'],
+      })
+    } catch {}
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-indigo-50/70 via-white to-indigo-50/40 p-4">
-        <div className="max-w-lg w-full bg-white p-8 rounded-3xl border border-indigo-100 shadow-xl text-center space-y-6">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner animate-bounce">
-            <Trophy className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-              Onboarding Complete!
-            </h1>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Congratulations, <span className="font-semibold text-gray-900">{currentUser?.firstName || 'Student'}</span>! Your career profile has been successfully built.
-            </p>
-          </div>
-
-          <div className="p-4 bg-gray-50 rounded-2xl text-left border border-gray-100 space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Institution</span>
-              <span className="font-semibold text-gray-900">{academic.school || 'Completed'}</span>
+        <Card3DTilt maxTilt={5}>
+          <div className="max-w-lg w-full bento-card p-8 text-center space-y-6">
+            <div className="flex justify-center">
+              <TrophyMastery3D className="w-28 h-28" size={112} autoConfetti />
             </div>
-            {academic.degree && (
-              <div className="flex items-center justify-between text-xs text-gray-600">
-                <span>Degree</span>
-                <span className="font-semibold text-gray-900">{academic.degree}</span>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Launch Ready!
+              </span>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                Onboarding Complete!
+              </h1>
+              <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                Congratulations, <strong className="font-semibold text-slate-900">{currentUser?.firstName || 'Student'}</strong>! Your career trajectory is calibrated and ready.
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50/80 rounded-2xl text-left border border-slate-150 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <span>Institution</span>
+                <span className="font-bold text-slate-900">{academic.school || 'Completed'}</span>
               </div>
-            )}
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Skills Logged</span>
-              <span className="font-semibold text-[#4F46E5]">{selectedSkills.length} skills</span>
+              {academic.degree && (
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <span>Degree</span>
+                  <span className="font-bold text-slate-900">{academic.degree}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <span>Skills Registered</span>
+                <span className="font-bold text-indigo-600">{selectedSkills.length} skills</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button
+                onClick={() => navigate('/dashboard/profile')}
+                variant="outline"
+                className="flex-1 py-4 text-xs font-bold rounded-xl border-slate-200 hover:bg-slate-50 cursor-pointer"
+              >
+                View Profile
+              </Button>
+              <Button
+                onClick={() => navigate('/dashboard')}
+                className="flex-1 py-4 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-md shadow-indigo-500/20 cursor-pointer"
+              >
+                Enter Dashboard <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Button
-              onClick={() => navigate('/dashboard/profile')}
-              variant="outline"
-              className="flex-1 py-5 text-sm font-semibold rounded-xl"
-            >
-              View My Profile
-            </Button>
-            <Button
-              onClick={() => navigate('/dashboard')}
-              className="flex-1 py-5 text-sm font-semibold rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white gap-2 shadow-md shadow-indigo-100"
-            >
-              Go to Dashboard <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        </Card3DTilt>
       </div>
     )
   }
@@ -678,11 +699,18 @@ export default function Onboarding() {
       {/* Main Container */}
       <main className="max-w-3xl mx-auto px-4 mt-8 space-y-6">
         {/* Step Indicator Header */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-              Step {currentStepIndex + 1} of {sections.length}
+        <div className="bento-card p-5 sm:p-6 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse mr-1.5" />
+                Step {currentStepIndex + 1} of {sections.length}
+              </span>
+              <span className="text-xs font-semibold text-slate-900">{currentSection?.title}</span>
+            </div>
+
+            <span className="text-xs font-semibold text-indigo-600">
+              {progressPercentage}% Ready
             </span>
           </div>
 
